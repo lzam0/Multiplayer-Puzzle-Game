@@ -26,9 +26,8 @@ export function HostView({ code }: HostViewProps) {
 
   useEffect(() => {
     const origin =
-      typeof window !== 'undefined'
-        ? window.location.origin
-        : 'http://localhost:3333';
+      process.env.NEXT_PUBLIC_HOST_ORIGIN ??
+      (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3333');
     setJoinUrl(`${origin}/play/${code}`);
   }, [code]);
 
