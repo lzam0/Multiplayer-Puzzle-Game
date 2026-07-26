@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useCallback, useRef, useState } from 'react';
-import type { LetterGrid } from '@/lib/types';
+import type { LetterGrid, WordPath } from '@/lib/types';
 import { LetterBoard } from './LetterBoard';
 
 interface WordTracerProps {
   board: LetterGrid;
   onTrace: (word: string, letterIndices: number[]) => void;
   foundIndices?: number[];
+  foundWordPaths?: WordPath[];
   locked?: boolean;
 }
 
@@ -25,7 +26,7 @@ function getCellIndexFromPoint(
   return parseInt(idx, 10);
 }
 
-export function WordTracer({ board, onTrace, foundIndices = [], locked = false }: WordTracerProps) {
+export function WordTracer({ board, onTrace, foundIndices = [], foundWordPaths, locked = false }: WordTracerProps) {
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   const isTracingRef = useRef(false);
@@ -102,7 +103,7 @@ export function WordTracer({ board, onTrace, foundIndices = [], locked = false }
       style={{ touchAction: 'none' }}
       className={locked ? 'cursor-default opacity-80' : 'cursor-pointer'}
     >
-      <LetterBoard board={board} selectedIndices={selectedIndices} foundIndices={foundIndices} />
+      <LetterBoard board={board} selectedIndices={selectedIndices} foundIndices={foundIndices} foundWordPaths={foundWordPaths} />
     </div>
   );
 }

@@ -150,6 +150,7 @@ export function PlayerView({ code }: PlayerViewProps) {
                 board={board}
                 onTrace={traceWord}
                 foundIndices={foundWordIndices}
+                foundWordPaths={foundWordPaths}
                 locked
               />
             </div>
@@ -159,6 +160,7 @@ export function PlayerView({ code }: PlayerViewProps) {
                 board={board}
                 onTrace={traceWord}
                 foundIndices={foundWordIndices}
+                foundWordPaths={foundWordPaths}
               />
               <button
                 onClick={resetBoard}
