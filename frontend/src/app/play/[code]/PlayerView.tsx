@@ -31,7 +31,7 @@ export function PlayerView({ code }: PlayerViewProps) {
     board,
     topic,
     foundWords,
-    foundWordIndices,
+    foundWordPaths,
     playerFinished,
     roundRankings,
     roundIndex,
@@ -42,6 +42,9 @@ export function PlayerView({ code }: PlayerViewProps) {
     resetBoard,
     leave,
   } = useRoom(code);
+
+  const wordColors = Object.fromEntries(foundWordPaths.map((p) => [p.word, p.color]));
+  const foundWordIndices = foundWordPaths.flatMap((p) => p.indices);
 
   const handleJoin = useCallback(
     (e: React.FormEvent) => {
@@ -166,7 +169,7 @@ export function PlayerView({ code }: PlayerViewProps) {
             </div>
           )}
 
-          <WordCounter words={board.words} foundWords={foundWords} />
+          <WordCounter words={board.words} foundWords={foundWords} wordColors={wordColors} />
 
           <button onClick={handleLeave} className="text-red-500 text-sm underline mt-2">
             Leave Game

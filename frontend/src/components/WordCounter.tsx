@@ -3,9 +3,10 @@
 interface WordCounterProps {
   words: string[];
   foundWords: string[];
+  wordColors?: Record<string, string>;
 }
 
-export function WordCounter({ words, foundWords }: WordCounterProps) {
+export function WordCounter({ words, foundWords, wordColors }: WordCounterProps) {
   const foundSet = new Set(foundWords);
 
   const sorted = [...words].sort((a, b) => {
@@ -20,16 +21,20 @@ export function WordCounter({ words, foundWords }: WordCounterProps) {
     <div className="flex flex-col gap-2">
       {sorted.map((word) => {
         const found = foundSet.has(word);
+        const color = wordColors?.[word] ?? '#4ade80';
         return (
           <div key={word} className="flex gap-1 items-center">
             {word.split('').map((letter, i) => (
               <div
                 key={i}
                 className={`w-8 h-8 flex items-center justify-center rounded font-bold font-mono text-sm border-2 ${
-                  found
-                    ? 'bg-green-500 text-white border-green-600'
-                    : 'bg-gray-200 text-gray-400 border-gray-300'
+                  found ? '' : 'bg-gray-200 text-gray-400 border-gray-300'
                 }`}
+                style={
+                  found
+                    ? { backgroundColor: color, color: 'white', borderColor: color }
+                    : undefined
+                }
               >
                 {found ? letter : '_'}
               </div>

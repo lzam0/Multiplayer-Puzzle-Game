@@ -7,6 +7,7 @@ import type {
   LetterGrid,
   RoundRankEntry,
   PodiumEntry,
+  WordPath,
   RoomJoinedPayload,
   PlayerJoinedPayload,
   PlayerLeftPayload,
@@ -22,6 +23,17 @@ import type {
 
 export type FeedbackState = 'correct' | 'incorrect' | null;
 
+const WORD_COLORS = [
+  '#f87171', // red
+  '#fb923c', // orange
+  '#facc15', // yellow
+  '#4ade80', // green
+  '#34d399', // emerald
+  '#60a5fa', // blue
+  '#a78bfa', // violet
+  '#f472b6', // pink
+];
+
 export type ClientPhase = 'lobby' | 'preview' | 'active' | 'round-result' | 'game-over';
 
 interface UseRoomReturn {
@@ -36,7 +48,7 @@ interface UseRoomReturn {
   totalRounds: number;
   isLastRound: boolean;
   foundWords: string[];
-  foundWordIndices: number[];
+  foundWordPaths: WordPath[];
   playerFinished: boolean;
   finishers: PlayerFinishedPayload[];
   roundRankings: RoundRankEntry[];
@@ -64,7 +76,7 @@ export function useRoom(code: string): UseRoomReturn {
   const [totalRounds, setTotalRounds] = useState(3);
   const [isLastRound, setIsLastRound] = useState(false);
   const [foundWords, setFoundWords] = useState<string[]>([]);
-  const [foundWordIndices, setFoundWordIndices] = useState<number[]>([]);
+  const [foundWordPaths, setFoundWordPaths] = useState<WordPath[]>([]);
   const [playerFinished, setPlayerFinished] = useState(false);
   const [finishers, setFinishers] = useState<PlayerFinishedPayload[]>([]);
   const [roundRankings, setRoundRankings] = useState<RoundRankEntry[]>([]);
@@ -73,6 +85,7 @@ export function useRoom(code: string): UseRoomReturn {
   const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const errorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingTraceRef = useRef<{ word: string; letterIndices: number[] } | null>(null);
+  const boardRef = useRef<LetterGrid | null>(null);
 
   useEffect(() => {
     if (!errorMsg) return;
@@ -111,12 +124,13 @@ export function useRoom(code: string): UseRoomReturn {
 
     // Host only: 5s board preview before players get the board
     const onRoundStarting = (payload: RoundStartingPayload) => {
+      boardRef.current = payload.board;
       setBoard(payload.board);
       setTopic(payload.topic);
       setRoundIndex(payload.round);
       setTotalRounds(payload.totalRounds);
       setFoundWords([]);
-      setFoundWordIndices([]);
+      setFoundWordPaths([]);
       setPlayerFinished(false);
       setFinishers([]);
       setPhase('preview');
@@ -124,12 +138,13 @@ export function useRoom(code: string): UseRoomReturn {
 
     // All clients: board goes live, player clocks start
     const onRoundActive = (payload: RoundActivePayload) => {
+      boardRef.current = payload.board;
       setBoard(payload.board);
       setTopic(payload.topic);
       setEndsAt(payload.endsAt);
       setRoundIndex(payload.round);
       setFoundWords([]);
-      setFoundWordIndices([]);
+      setFoundWordPaths([]);
       setPlayerFinished(false);
       setFinishers([]);
       setPhase('active');
@@ -140,7 +155,12 @@ export function useRoom(code: string): UseRoomReturn {
       if (payload.foundBy !== socket.id) return;
       if (pendingTraceRef.current?.word === payload.word) {
         const indices = pendingTraceRef.current.letterIndices;
-        setFoundWordIndices((prev) => [...prev, ...indices]);
+        const word = payload.word;
+        setFoundWordPaths((prev) => {
+          const colorIndex = boardRef.current ? boardRef.current.words.indexOf(word) : 0;
+          const color = WORD_COLORS[colorIndex % WORD_COLORS.length] ?? WORD_COLORS[0];
+          return [...prev, { word, indices, color }];
+        });
         pendingTraceRef.current = null;
       }
       setFoundWords((prev) => [...prev, payload.word]);
@@ -242,7 +262,7 @@ export function useRoom(code: string): UseRoomReturn {
   );
 
   const resetBoard = useCallback(
-    () => setFoundWordIndices([]),
+    () => setFoundWordPaths([]),
     [],
   );
 
@@ -263,7 +283,7 @@ export function useRoom(code: string): UseRoomReturn {
     totalRounds,
     isLastRound,
     foundWords,
-    foundWordIndices,
+    foundWordPaths,
     playerFinished,
     finishers,
     roundRankings,

@@ -1,5 +1,11 @@
 // Mirror of backend game.types.ts
 
+export interface WordPath {
+  word: string;
+  indices: number[];  // flat cell indices, same encoding as trace_word
+  color: string;      // hex from WORD_COLORS palette
+}
+
 export interface Topic {
   id: string;
   label: string;
