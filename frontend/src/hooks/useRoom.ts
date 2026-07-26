@@ -261,10 +261,10 @@ export function useRoom(code: string): UseRoomReturn {
     [socket, code],
   );
 
-  const resetBoard = useCallback(
-    () => setFoundWordPaths([]),
-    [],
-  );
+  const resetBoard = useCallback(() => {
+    setFoundWordPaths([]);
+    setFoundWords([]);
+  }, []);
 
   const leave = useCallback(
     () => socket.emit('leave_room', { code }),
