@@ -4,38 +4,75 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSocket } from './useSocket';
 import type {
   RoomState,
-  Score,
+  LetterGrid,
+  RoundRankEntry,
+  PodiumEntry,
   RoomJoinedPayload,
   PlayerJoinedPayload,
   PlayerLeftPayload,
-  GameStartedPayload,
+  RoundStartingPayload,
+  RoundActivePayload,
   WordCorrectPayload,
   WordIncorrectPayload,
+  PlayerFinishedPayload,
+  RoundOverPayload,
   GameOverPayload,
   ErrorPayload,
 } from '@/lib/types';
 
 export type FeedbackState = 'correct' | 'incorrect' | null;
 
+export type ClientPhase = 'lobby' | 'preview' | 'active' | 'round-result' | 'game-over';
+
 interface UseRoomReturn {
   room: RoomState | null;
+  phase: ClientPhase;
   feedback: FeedbackState;
-  scores: Score[];
   errorMsg: string | null;
+  board: LetterGrid | null;
+  topic: string | null;
+  endsAt: number | null;
+  roundIndex: number;
+  totalRounds: number;
+  isLastRound: boolean;
+  foundWords: string[];
+  foundWordIndices: number[];
+  playerFinished: boolean;
+  finishers: PlayerFinishedPayload[];
+  roundRankings: RoundRankEntry[];
+  podium: PodiumEntry[];
   join: (name: string) => void;
   startGame: (topic: string) => void;
+  nextRound: (topic: string) => void;
+  endRound: () => void;
+  endGame: () => void;
   traceWord: (word: string, letterIndices: number[]) => void;
+  resetBoard: () => void;
   leave: () => void;
 }
 
-export function useRoom(code: string, myName: string | null): UseRoomReturn {
+export function useRoom(code: string): UseRoomReturn {
   const { socket } = useSocket();
   const [room, setRoom] = useState<RoomState | null>(null);
+  const [phase, setPhase] = useState<ClientPhase>('lobby');
   const [feedback, setFeedback] = useState<FeedbackState>(null);
-  const [scores, setScores] = useState<Score[]>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [board, setBoard] = useState<LetterGrid | null>(null);
+  const [topic, setTopic] = useState<string | null>(null);
+  const [endsAt, setEndsAt] = useState<number | null>(null);
+  const [roundIndex, setRoundIndex] = useState(0);
+  const [totalRounds, setTotalRounds] = useState(3);
+  const [isLastRound, setIsLastRound] = useState(false);
+  const [foundWords, setFoundWords] = useState<string[]>([]);
+  const [foundWordIndices, setFoundWordIndices] = useState<number[]>([]);
+  const [playerFinished, setPlayerFinished] = useState(false);
+  const [finishers, setFinishers] = useState<PlayerFinishedPayload[]>([]);
+  const [roundRankings, setRoundRankings] = useState<RoundRankEntry[]>([]);
+  const [podium, setPodium] = useState<PodiumEntry[]>([]);
+
   const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const errorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingTraceRef = useRef<{ word: string; letterIndices: number[] } | null>(null);
 
   useEffect(() => {
     if (!errorMsg) return;
@@ -47,9 +84,7 @@ export function useRoom(code: string, myName: string | null): UseRoomReturn {
   }, [errorMsg]);
 
   const clearFeedback = useCallback(() => {
-    if (feedbackTimer.current) {
-      clearTimeout(feedbackTimer.current);
-    }
+    if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
     feedbackTimer.current = setTimeout(() => setFeedback(null), 2000);
   }, []);
 
@@ -70,59 +105,76 @@ export function useRoom(code: string, myName: string | null): UseRoomReturn {
     const onPlayerLeft = (payload: PlayerLeftPayload) => {
       setRoom((prev) => {
         if (!prev) return prev;
-        return {
-          ...prev,
-          players: prev.players.filter((p) => p.id !== payload.playerId),
-        };
+        return { ...prev, players: prev.players.filter((p) => p.id !== payload.playerId) };
       });
     };
 
-    const onGameStarted = (payload: GameStartedPayload) => {
-      setRoom((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          status: 'in_progress',
-          topic: payload.topic,
-          board: undefined,
-        };
-      });
+    // Host only: 5s board preview before players get the board
+    const onRoundStarting = (payload: RoundStartingPayload) => {
+      setBoard(payload.board);
+      setTopic(payload.topic);
+      setRoundIndex(payload.round);
+      setTotalRounds(payload.totalRounds);
+      setFoundWords([]);
+      setFoundWordIndices([]);
+      setPlayerFinished(false);
+      setFinishers([]);
+      setPhase('preview');
     };
 
+    // All clients: board goes live, player clocks start
+    const onRoundActive = (payload: RoundActivePayload) => {
+      setBoard(payload.board);
+      setTopic(payload.topic);
+      setEndsAt(payload.endsAt);
+      setRoundIndex(payload.round);
+      setFoundWords([]);
+      setFoundWordIndices([]);
+      setPlayerFinished(false);
+      setFinishers([]);
+      setPhase('active');
+    };
+
+    // Submitter only: private word found
     const onWordCorrect = (payload: WordCorrectPayload) => {
-      setRoom((prev) => {
-        if (!prev) return prev;
-        const updatedPlayers = prev.players.map((p) =>
-          p.id === payload.foundBy ? { ...p, score: payload.score } : p,
-        );
-        return {
-          ...prev,
-          players: updatedPlayers,
-          foundWords: [...prev.foundWords, payload.word],
-        };
-      });
-      if (myName !== null) {
-        const myId = socket.id;
-        if (payload.foundBy === myId) {
-          setFeedback('correct');
-          clearFeedback();
-        }
+      if (payload.foundBy !== socket.id) return;
+      if (pendingTraceRef.current?.word === payload.word) {
+        const indices = pendingTraceRef.current.letterIndices;
+        setFoundWordIndices((prev) => [...prev, ...indices]);
+        pendingTraceRef.current = null;
       }
+      setFoundWords((prev) => [...prev, payload.word]);
+      setFeedback('correct');
+      clearFeedback();
     };
 
+    // Submitter only: rejected trace
     const onWordIncorrect = (payload: WordIncorrectPayload) => {
+      if (payload.playerId !== socket.id) return;
+      setFeedback('incorrect');
+      clearFeedback();
+    };
+
+    // Host + finishing player: a player completed their board
+    const onPlayerFinished = (payload: PlayerFinishedPayload) => {
       if (payload.playerId === socket.id) {
-        setFeedback('incorrect');
-        clearFeedback();
+        setPlayerFinished(true);
       }
+      setFinishers((prev) => {
+        if (prev.some((f) => f.playerId === payload.playerId)) return prev;
+        return [...prev, payload];
+      });
+    };
+
+    const onRoundOver = (payload: RoundOverPayload) => {
+      setRoundRankings(payload.rankings);
+      setIsLastRound(payload.isLastRound);
+      setPhase('round-result');
     };
 
     const onGameOver = (payload: GameOverPayload) => {
-      setScores(payload.scores);
-      setRoom((prev) => {
-        if (!prev) return prev;
-        return { ...prev, status: 'finished' };
-      });
+      setPodium(payload.podium);
+      setPhase('game-over');
     };
 
     const onError = (payload: ErrorPayload) => {
@@ -132,9 +184,12 @@ export function useRoom(code: string, myName: string | null): UseRoomReturn {
     socket.on('room_joined', onRoomJoined);
     socket.on('player_joined', onPlayerJoined);
     socket.on('player_left', onPlayerLeft);
-    socket.on('game_started', onGameStarted);
+    socket.on('round_starting', onRoundStarting);
+    socket.on('round_active', onRoundActive);
     socket.on('word_correct', onWordCorrect);
     socket.on('word_incorrect', onWordIncorrect);
+    socket.on('player_finished', onPlayerFinished);
+    socket.on('round_over', onRoundOver);
     socket.on('game_over', onGameOver);
     socket.on('error', onError);
 
@@ -142,38 +197,84 @@ export function useRoom(code: string, myName: string | null): UseRoomReturn {
       socket.off('room_joined', onRoomJoined);
       socket.off('player_joined', onPlayerJoined);
       socket.off('player_left', onPlayerLeft);
-      socket.off('game_started', onGameStarted);
+      socket.off('round_starting', onRoundStarting);
+      socket.off('round_active', onRoundActive);
       socket.off('word_correct', onWordCorrect);
       socket.off('word_incorrect', onWordIncorrect);
+      socket.off('player_finished', onPlayerFinished);
+      socket.off('round_over', onRoundOver);
       socket.off('game_over', onGameOver);
       socket.off('error', onError);
     };
-  }, [socket, myName, clearFeedback]);
+  }, [socket, clearFeedback]);
 
   const join = useCallback(
-    (name: string) => {
-      socket.emit('join_room', { code, playerName: name });
-    },
+    (name: string) => socket.emit('join_room', { code, playerName: name }),
     [socket, code],
   );
 
   const startGame = useCallback(
-    (topic: string) => {
-      socket.emit('start_game', { code, topic });
-    },
+    (topic: string) => socket.emit('start_game', { code, topic }),
+    [socket, code],
+  );
+
+  const nextRound = useCallback(
+    (topic: string) => socket.emit('next_round', { code, topic }),
+    [socket, code],
+  );
+
+  const endRound = useCallback(
+    () => socket.emit('end_round', { code }),
+    [socket, code],
+  );
+
+  const endGame = useCallback(
+    () => socket.emit('end_game', { code }),
     [socket, code],
   );
 
   const traceWord = useCallback(
     (word: string, letterIndices: number[]) => {
+      pendingTraceRef.current = { word, letterIndices };
       socket.emit('trace_word', { code, word, letterIndices });
     },
     [socket, code],
   );
 
-  const leave = useCallback(() => {
-    socket.emit('leave_room', { code });
-  }, [socket, code]);
+  const resetBoard = useCallback(
+    () => setFoundWordIndices([]),
+    [],
+  );
 
-  return { room, feedback, scores, errorMsg, join, startGame, traceWord, leave };
+  const leave = useCallback(
+    () => socket.emit('leave_room', { code }),
+    [socket, code],
+  );
+
+  return {
+    room,
+    phase,
+    feedback,
+    errorMsg,
+    board,
+    topic,
+    endsAt,
+    roundIndex,
+    totalRounds,
+    isLastRound,
+    foundWords,
+    foundWordIndices,
+    playerFinished,
+    finishers,
+    roundRankings,
+    podium,
+    join,
+    startGame,
+    nextRound,
+    endRound,
+    endGame,
+    traceWord,
+    resetBoard,
+    leave,
+  };
 }

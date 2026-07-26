@@ -1,9 +1,16 @@
 // Mirror of backend game.types.ts
 
+export interface Topic {
+  id: string;
+  label: string;
+  words: string[];
+}
+
 export interface Player {
   id: string;
   name: string;
-  score: number;
+  totalTimeMs: number;
+  roundsCounted: number;
 }
 
 export interface LetterGrid {
@@ -20,12 +27,39 @@ export interface RoomState {
   hostId: string;
   players: Player[];
   status: GameStatus;
-  topic?: string;
-  board?: LetterGrid;
-  foundWords: string[];
+  currentRound: null | {
+    index: number;
+    topicId: string;
+    board: LetterGrid;
+    phase: 'preview' | 'active' | 'ended';
+    goLiveAt: number | null;
+    endsAt: number | null;
+  };
+  roundNumber: number;
 }
 
-// Score shape for game_over event
+export interface PlayerRoundState {
+  playerId: string;
+  foundWords: string[];
+  completedAt: number | null;
+}
+
+export interface RoundRankEntry {
+  playerId: string;
+  name: string;
+  completionTimeMs: number | null;
+  wordsFound: number;
+  rank: number;
+  chargedMs: number;
+}
+
+export interface PodiumEntry {
+  playerId: string;
+  name: string;
+  totalTimeMs: number;
+  rank: number;
+}
+
 export interface Score {
   id: string;
   name: string;
@@ -46,14 +80,27 @@ export interface PlayerLeftPayload {
   playerId: string;
 }
 
-export interface GameStartedPayload {
+export interface RoundStartingPayload {
+  round: number;
   topic: string;
+  board: LetterGrid;
+  previewMs: number;
+  totalRounds: number;
+}
+
+export interface RoundActivePayload {
+  round: number;
+  topic: string;
+  board: LetterGrid;
+  endsAt: number;
+  durationMs: number;
 }
 
 export interface WordCorrectPayload {
   word: string;
   foundBy: string;
   score: number;
+  remaining: number;
 }
 
 export interface WordIncorrectPayload {
@@ -61,8 +108,21 @@ export interface WordIncorrectPayload {
   playerId: string;
 }
 
+export interface PlayerFinishedPayload {
+  playerId: string;
+  name: string;
+  completionTimeMs: number;
+}
+
+export interface RoundOverPayload {
+  rankings: RoundRankEntry[];
+  roundIndex: number;
+  isLastRound: boolean;
+}
+
 export interface GameOverPayload {
   scores: Score[];
+  podium: PodiumEntry[];
 }
 
 export interface ErrorPayload {
