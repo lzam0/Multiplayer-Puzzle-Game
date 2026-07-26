@@ -48,3 +48,7 @@ dist/
 
 # TS build info
 *.tsbuildinfo
+
+
+# claude: ignore all files in the root directory except for the .gitignore file
+.claude/
