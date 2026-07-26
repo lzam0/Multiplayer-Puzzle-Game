@@ -12,8 +12,12 @@ export class GameController {
   @Get('board')
   async getBoard(@Query('topic') topic: string) {
     if (!topic?.trim()) throw new BadRequestException('topic is required');
-    const words = await this.topicsService.generateWords(topic);
-    const board = this.gameService.generateGrid(words);
-    return { board };
+    try {
+      const words = await this.topicsService.generateWords(topic);
+      const board = this.gameService.generateGrid(words);
+      return { board };
+    } catch {
+      throw new BadRequestException('Could not generate board for the given topic');
+    }
   }
 }
