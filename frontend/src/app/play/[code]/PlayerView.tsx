@@ -161,13 +161,8 @@ export function PlayerView({ code }: PlayerViewProps) {
                 onTrace={traceWord}
                 foundIndices={foundWordIndices}
                 foundWordPaths={foundWordPaths}
+                onReset={resetBoard}
               />
-              <button
-                onClick={resetBoard}
-                className="text-gray-400 text-xs underline"
-              >
-                Reset board highlights
-              </button>
             </div>
           )}
 
