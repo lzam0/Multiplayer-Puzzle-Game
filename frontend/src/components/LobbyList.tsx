@@ -24,7 +24,6 @@ export function LobbyList({ players, filterSentinel = false }: LobbyListProps) {
         <li key={p.id} className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-green-500" />
           <span className="font-medium">{p.name}</span>
-          <span className="ml-auto text-sm text-gray-500">{p.score} pts</span>
         </li>
       ))}
     </ul>

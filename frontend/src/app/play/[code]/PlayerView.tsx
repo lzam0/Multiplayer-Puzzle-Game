@@ -7,8 +7,11 @@ import { useSocket } from '@/hooks/useSocket';
 import { LobbyList } from '@/components/LobbyList';
 import { WordTracer } from '@/components/WordTracer';
 import { FoundWords } from '@/components/FoundWords';
-import { Scoreboard } from '@/components/Scoreboard';
 import { Feedback } from '@/components/Feedback';
+import { RoundRankings } from '@/components/RoundRankings';
+import { Podium } from '@/components/Podium';
+
+const HOST_SENTINEL = '__host__';
 
 interface PlayerViewProps {
   code: string;
@@ -16,23 +19,28 @@ interface PlayerViewProps {
 
 export function PlayerView({ code }: PlayerViewProps) {
   const router = useRouter();
-  const { socket, connected } = useSocket();
+  const { connected } = useSocket();
   const [nameInput, setNameInput] = useState('');
   const [myName, setMyName] = useState<string | null>(null);
 
-  const { room, feedback, scores, errorMsg, join, traceWord, leave } = useRoom(
-    code,
-    myName,
-  );
-
-  // Derive phase from room state
-  const currentPhase = (() => {
-    if (!myName) return 'name-entry';
-    if (!room) return 'lobby';
-    if (room.status === 'finished') return 'game-over';
-    if (room.status === 'in_progress') return 'game';
-    return 'lobby';
-  })();
+  const {
+    room,
+    phase,
+    feedback,
+    errorMsg,
+    board,
+    topic,
+    foundWords,
+    foundWordIndices,
+    playerFinished,
+    roundRankings,
+    roundIndex,
+    isLastRound,
+    podium,
+    join,
+    traceWord,
+    leave,
+  } = useRoom(code);
 
   const handleJoin = useCallback(
     (e: React.FormEvent) => {
@@ -50,7 +58,7 @@ export function PlayerView({ code }: PlayerViewProps) {
     router.push('/');
   }, [leave, router]);
 
-  const myPlayer = room?.players.find((p) => p.id === socket.id);
+  const visiblePlayers = room?.players.filter((p) => p.name !== HOST_SENTINEL) ?? [];
 
   return (
     <main className="min-h-screen bg-white flex flex-col items-center p-4 gap-6 max-w-md mx-auto">
@@ -68,7 +76,8 @@ export function PlayerView({ code }: PlayerViewProps) {
         </div>
       )}
 
-      {currentPhase === 'name-entry' && (
+      {/* Name entry */}
+      {!myName && (
         <div className="flex flex-col items-center justify-center flex-1 gap-6 w-full">
           <div className="text-center">
             <p className="text-gray-500 text-sm">Room</p>
@@ -95,7 +104,8 @@ export function PlayerView({ code }: PlayerViewProps) {
         </div>
       )}
 
-      {currentPhase === 'lobby' && (
+      {/* Lobby — waiting for host to start */}
+      {myName && phase === 'lobby' && (
         <div className="flex flex-col items-center justify-center flex-1 gap-6 w-full">
           <div className="text-center">
             <p className="text-gray-500 text-sm">Room</p>
@@ -103,68 +113,91 @@ export function PlayerView({ code }: PlayerViewProps) {
           </div>
           <div className="w-full bg-gray-50 rounded-2xl p-4">
             <h2 className="font-bold text-gray-700 mb-3">
-              Players ({room?.players.length ?? 0})
+              Players ({visiblePlayers.length})
             </h2>
             {room ? (
-              <LobbyList players={room.players} />
+              <LobbyList players={visiblePlayers} />
             ) : (
               <p className="text-gray-400 italic text-sm">Joining…</p>
             )}
           </div>
           <p className="text-gray-500 italic text-sm">Waiting for host to start the game…</p>
-          <button
-            onClick={handleLeave}
-            className="text-red-500 text-sm underline"
-          >
+          <button onClick={handleLeave} className="text-red-500 text-sm underline">
             Leave Room
           </button>
         </div>
       )}
 
-      {currentPhase === 'game' && room && (
+      {/* Round active — interactive board */}
+      {myName && phase === 'active' && board && (
         <div className="flex flex-col gap-4 w-full">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs text-gray-500">Topic</p>
-              <p className="font-bold text-lg">{room.topic}</p>
+              <p className="font-bold text-lg">{topic}</p>
             </div>
             <div className="text-right">
-              <p className="text-xs text-gray-500">Your Score</p>
+              <p className="text-xs text-gray-500">Found</p>
               <p className="font-bold text-2xl text-blue-600">
-                {myPlayer?.score ?? 0}
+                {foundWords.length}/{board.words.length}
               </p>
             </div>
           </div>
 
-          {room.board ? (
+          {playerFinished ? (
             <div className="flex flex-col items-center gap-4">
-              <WordTracer board={room.board} onTrace={traceWord} />
+              <div className="w-full bg-green-50 border-2 border-green-300 rounded-xl p-4 text-center">
+                <p className="text-green-700 font-bold text-lg">Done!</p>
+                <p className="text-green-600 text-sm">Waiting for other players…</p>
+              </div>
+              <WordTracer
+                board={board}
+                onTrace={traceWord}
+                foundIndices={foundWordIndices}
+                locked
+              />
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-12 gap-3">
-              <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-              <p className="text-gray-500 italic">Game starting — board loading…</p>
+            <div className="flex flex-col items-center gap-4">
+              <WordTracer
+                board={board}
+                onTrace={traceWord}
+                foundIndices={foundWordIndices}
+              />
             </div>
           )}
 
           <div>
             <h2 className="font-bold text-gray-700 mb-2 text-sm">Found Words</h2>
-            <FoundWords words={room.foundWords} />
+            <FoundWords words={foundWords} />
           </div>
 
-          <button
-            onClick={handleLeave}
-            className="text-red-500 text-sm underline mt-2"
-          >
+          <button onClick={handleLeave} className="text-red-500 text-sm underline mt-2">
             Leave Game
           </button>
         </div>
       )}
 
-      {currentPhase === 'game-over' && (
+      {/* Between rounds */}
+      {myName && phase === 'round-result' && (
+        <div className="flex flex-col gap-6 w-full flex-1 justify-center">
+          <div className="bg-gray-900 text-white rounded-2xl p-6">
+            <RoundRankings rankings={roundRankings} roundIndex={roundIndex} />
+          </div>
+          {isLastRound ? (
+            <p className="text-center text-gray-500 italic text-sm">Waiting for host to end the game…</p>
+          ) : (
+            <p className="text-center text-gray-500 italic text-sm">Waiting for next round…</p>
+          )}
+        </div>
+      )}
+
+      {/* Final podium */}
+      {myName && phase === 'game-over' && (
         <div className="flex flex-col items-center gap-6 w-full flex-1 justify-center">
-          <h1 className="text-3xl font-extrabold text-gray-800">Game Over!</h1>
-          <Scoreboard scores={scores} />
+          <div className="bg-gray-900 text-white rounded-2xl p-6 w-full">
+            <Podium podium={podium} />
+          </div>
           <button
             onClick={() => router.push('/')}
             className="w-full py-4 text-xl font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors"

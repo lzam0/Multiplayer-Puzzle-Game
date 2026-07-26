@@ -5,10 +5,16 @@ import type { LetterGrid } from '@/lib/types';
 interface LetterBoardProps {
   board: LetterGrid;
   selectedIndices?: number[];
+  foundIndices?: number[];
 }
 
-export function LetterBoard({ board, selectedIndices = [] }: LetterBoardProps) {
+export function LetterBoard({
+  board,
+  selectedIndices = [],
+  foundIndices = [],
+}: LetterBoardProps) {
   const selectedSet = new Set(selectedIndices);
+  const foundSet = new Set(foundIndices);
 
   return (
     <div
@@ -19,6 +25,7 @@ export function LetterBoard({ board, selectedIndices = [] }: LetterBoardProps) {
         row.map((letter, c) => {
           const idx = r * board.cols + c;
           const isSelected = selectedSet.has(idx);
+          const isFound = foundSet.has(idx);
           return (
             <div
               key={idx}
@@ -27,7 +34,9 @@ export function LetterBoard({ board, selectedIndices = [] }: LetterBoardProps) {
                 flex items-center justify-center w-10 h-10 rounded font-bold text-lg border-2
                 ${isSelected
                   ? 'bg-blue-500 text-white border-blue-700'
-                  : 'bg-white text-gray-800 border-gray-300'}
+                  : isFound
+                    ? 'bg-green-400 text-white border-green-600'
+                    : 'bg-white text-gray-800 border-gray-300'}
               `}
             >
               {letter}

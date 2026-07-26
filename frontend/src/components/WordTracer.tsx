@@ -7,6 +7,8 @@ import { LetterBoard } from './LetterBoard';
 interface WordTracerProps {
   board: LetterGrid;
   onTrace: (word: string, letterIndices: number[]) => void;
+  foundIndices?: number[];
+  locked?: boolean;
 }
 
 function getCellIndexFromPoint(
@@ -23,21 +25,21 @@ function getCellIndexFromPoint(
   return parseInt(idx, 10);
 }
 
-export function WordTracer({ board, onTrace }: WordTracerProps) {
+export function WordTracer({ board, onTrace, foundIndices = [], locked = false }: WordTracerProps) {
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   const isTracingRef = useRef(false);
 
   const startTrace = useCallback(
     (clientX: number, clientY: number) => {
-      if (!containerRef.current) return;
+      if (locked || !containerRef.current) return;
       isTracingRef.current = true;
       const idx = getCellIndexFromPoint(containerRef.current, clientX, clientY);
       if (idx !== null) {
         setSelectedIndices([idx]);
       }
     },
-    [],
+    [locked],
   );
 
   const continueTrace = useCallback(
@@ -98,9 +100,9 @@ export function WordTracer({ board, onTrace }: WordTracerProps) {
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       style={{ touchAction: 'none' }}
-      className="cursor-pointer"
+      className={locked ? 'cursor-default opacity-80' : 'cursor-pointer'}
     >
-      <LetterBoard board={board} selectedIndices={selectedIndices} />
+      <LetterBoard board={board} selectedIndices={selectedIndices} foundIndices={foundIndices} />
     </div>
   );
 }

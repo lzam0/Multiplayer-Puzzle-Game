@@ -42,8 +42,23 @@ cd backend && npm install && npm run start:dev
 cd frontend && npm install && npm run dev
 ```
 
-Host view: `http://localhost:3000`
-Backend: `http://localhost:3001`
+Host view: `http://localhost:3333`
+Backend: `http://localhost:8888`
+
+## Implementation Status
+
+| Area | Status | Notes |
+|---|---|---|
+| Room creation (REST) | Done | `POST /lobby`, `GET /lobby/:code` |
+| Lobby WebSocket join/leave | Done | `join_room`, disconnect handling |
+| Host view (QR + lobby + topic) | Done | `/host/[code]` |
+| Player view (name entry + lobby) | Done | `/play/[code]` |
+| `start_game` event | Partial | Emits `game_started` with topic; board generation not yet implemented |
+| `trace_word` event | Not started | Backend handler missing; `GameService` is a stub |
+| Board / grid generation | Not started | `GameService` is empty |
+| Topic data | Not started | `TopicsService` is a stub; `topics.data.ts` does not exist yet |
+| `word_correct` / `word_incorrect` | Not started | Depends on board generation |
+| Scoreboard / `game_over` | UI ready | Frontend complete; backend event not yet emitted |
 
 ## Docs
 
