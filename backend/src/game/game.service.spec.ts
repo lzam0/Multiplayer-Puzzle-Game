@@ -18,21 +18,25 @@ describe('GameService', () => {
   });
 
   describe('generateGrid', () => {
-    it('produces a fully-filled grid with every word traceable', () => {
+    it('produces a sparse grid larger than word total, with every word traceable', () => {
       const words = ['CAT', 'FOX', 'OWL', 'WOLF', 'BEAR', 'DEER', 'RAM'];
       const board = service.generateGrid(words);
+      const total = words.reduce((n, w) => n + w.length, 0);
 
-      expect(board.rows * board.cols).toBe(
-        words.reduce((n, w) => n + w.length, 0),
-      );
+      // Grid is larger than word total (sparse layout).
+      expect(board.rows * board.cols).toBeGreaterThan(total);
       expect(board.words).toEqual(words);
 
-      // Every cell filled.
+      // Word cells are uppercase letters; non-word cells are empty strings.
       for (const row of board.letters) {
         for (const cell of row) {
-          expect(cell).toMatch(/^[A-Z]$/);
+          expect(cell === '' || /^[A-Z]$/.test(cell)).toBe(true);
         }
       }
+
+      // Non-word cells exist (grid is sparse).
+      const emptyCells = board.letters.flat().filter((c) => c === '');
+      expect(emptyCells.length).toBeGreaterThan(0);
 
       // Each word must exist as an adjacent path somewhere on the board.
       for (const w of words) {
@@ -42,11 +46,6 @@ describe('GameService', () => {
 
     it('throws on an empty word list', () => {
       expect(() => service.generateGrid([])).toThrow();
-    });
-
-    it('throws when letters cannot exactly fill a rectangle', () => {
-      // 7 letters -> ceil(sqrt(7))=3 cols, ceil(7/3)=3 rows = 9 != 7.
-      expect(() => service.generateGrid(['ABCDEFG'])).toThrow();
     });
   });
 

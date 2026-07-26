@@ -11,11 +11,10 @@ export class GameService {
   // -------------------------------------------------------------------------
 
   /**
-   * Pack `words` into a rectangular grid where every word occupies a contiguous,
-   * orthogonally-adjacent path, no two words share a cell, and every cell is
-   * filled. Uses randomized snake-fill with backtracking, retried until a valid
-   * full-fill is found. Throws if the letter count cannot form a rectangle or if
-   * no packing is found within MAX_GEN_ATTEMPTS.
+   * Pack `words` into a sparse rectangular grid. Each word occupies a
+   * contiguous, orthogonally-adjacent path; no two words share a cell.
+   * Non-word cells are left as '' (empty). Uses randomized snake-fill with
+   * backtracking, retried until all words are placed within MAX_GEN_ATTEMPTS.
    */
   generateGrid(words: string[]): LetterGrid {
     if (!words || words.length === 0) {
@@ -24,14 +23,7 @@ export class GameService {
     const clean = words.map((w) => w.toUpperCase());
     const total = clean.reduce((n, w) => n + w.length, 0);
 
-    const dims = this.chooseDimensions(total);
-    if (!dims) {
-      // Not factorable into a reasonable rectangle (e.g. a prime total).
-      throw new Error(
-        `Word set of ${total} letters cannot fill a rectangular grid`,
-      );
-    }
-    const { rows, cols } = dims;
+    const { rows, cols } = this.chooseDimensions(total);
 
     // Longest words first — they are the hardest to place.
     const ordered = [...clean].sort((a, b) => b.length - a.length);
@@ -42,7 +34,7 @@ export class GameService {
       );
       if (this.placeWords(ordered, 0, grid, rows, cols)) {
         return {
-          letters: grid.map((r) => r.map((c) => c as string)),
+          letters: grid.map((r) => r.map((c) => c ?? '')),
           words: clean,
           rows,
           cols,
@@ -53,24 +45,18 @@ export class GameService {
   }
 
   /**
-   * Pick the most-square factor pair (rows <= cols) whose product equals `total`.
-   * Returns null if the only factorization is 1xN (too degenerate) — treat as
-   * unfillable so bad topic data fails loudly.
+   * Choose grid dimensions large enough to hold all word letters with ~50%
+   * breathing room for the sparse layout. The grid will always be larger than
+   * the total letter count, leaving dead cells for the irregular silhouette.
    */
-  private chooseDimensions(
-    total: number,
-  ): { rows: number; cols: number } | null {
-    let best: { rows: number; cols: number } | null = null;
-    for (let rows = Math.floor(Math.sqrt(total)); rows >= 2; rows--) {
-      if (total % rows === 0) {
-        best = { rows, cols: total / rows };
-        break;
-      }
-    }
-    return best;
+  private chooseDimensions(total: number): { rows: number; cols: number } {
+    const padded = Math.ceil(total * 1.5);
+    const rows = Math.ceil(Math.sqrt(padded));
+    const cols = Math.ceil(padded / rows);
+    return { rows, cols };
   }
 
-  /** Recursively place words[i..] into the grid. Returns true on full fill. */
+  /** Recursively place words[i..] into the grid. Returns true when all words are placed with unique paths. */
   private placeWords(
     words: string[],
     i: number,
@@ -79,8 +65,9 @@ export class GameService {
     cols: number,
   ): boolean {
     if (i === words.length) {
-      // All words placed; success requires the grid to be completely filled.
-      return grid.every((row) => row.every((c) => c !== null));
+      // Each word must have exactly one valid path on the board so that no word
+      // can be accidentally found by tracing another word's adjacent cells.
+      return words.every((w) => this.countPaths(w, grid, rows, cols) === 1);
     }
     const word = words[i];
     const starts = this.shuffle(this.emptyCells(grid, rows, cols));
@@ -119,6 +106,38 @@ export class GameService {
     }
     path.pop();
     return false;
+  }
+
+  /** Count how many distinct orthogonal paths on the grid spell `word`. */
+  private countPaths(
+    word: string,
+    grid: (string | null)[][],
+    rows: number,
+    cols: number,
+  ): number {
+    let total = 0;
+    const dfs = (k: number, r: number, c: number, seen: Set<number>): void => {
+      if (r < 0 || r >= rows || c < 0 || c >= cols) return;
+      if (grid[r][c] !== word[k]) return;
+      const idx = r * cols + c;
+      if (seen.has(idx)) return;
+      if (k === word.length - 1) {
+        total++;
+        return;
+      }
+      seen.add(idx);
+      dfs(k + 1, r - 1, c, seen);
+      dfs(k + 1, r + 1, c, seen);
+      dfs(k + 1, r, c - 1, seen);
+      dfs(k + 1, r, c + 1, seen);
+      seen.delete(idx);
+    };
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        dfs(0, r, c, new Set());
+      }
+    }
+    return total;
   }
 
   private neighbors(cell: Cell, rows: number, cols: number): Cell[] {

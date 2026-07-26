@@ -6,7 +6,7 @@ import { useRoom } from '@/hooks/useRoom';
 import { useSocket } from '@/hooks/useSocket';
 import { LobbyList } from '@/components/LobbyList';
 import { WordTracer } from '@/components/WordTracer';
-import { FoundWords } from '@/components/FoundWords';
+import { WordCounter } from '@/components/WordCounter';
 import { Feedback } from '@/components/Feedback';
 import { RoundRankings } from '@/components/RoundRankings';
 import { Podium } from '@/components/Podium';
@@ -39,6 +39,7 @@ export function PlayerView({ code }: PlayerViewProps) {
     podium,
     join,
     traceWord,
+    resetBoard,
     leave,
   } = useRoom(code);
 
@@ -131,17 +132,9 @@ export function PlayerView({ code }: PlayerViewProps) {
       {/* Round active — interactive board */}
       {myName && phase === 'active' && board && (
         <div className="flex flex-col gap-4 w-full">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-gray-500">Topic</p>
-              <p className="font-bold text-lg">{topic}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-xs text-gray-500">Found</p>
-              <p className="font-bold text-2xl text-blue-600">
-                {foundWords.length}/{board.words.length}
-              </p>
-            </div>
+          <div>
+            <p className="text-xs text-gray-500">Topic</p>
+            <p className="font-bold text-lg">{topic}</p>
           </div>
 
           {playerFinished ? (
@@ -164,13 +157,16 @@ export function PlayerView({ code }: PlayerViewProps) {
                 onTrace={traceWord}
                 foundIndices={foundWordIndices}
               />
+              <button
+                onClick={resetBoard}
+                className="text-gray-400 text-xs underline"
+              >
+                Reset board highlights
+              </button>
             </div>
           )}
 
-          <div>
-            <h2 className="font-bold text-gray-700 mb-2 text-sm">Found Words</h2>
-            <FoundWords words={foundWords} />
-          </div>
+          <WordCounter words={board.words} foundWords={foundWords} />
 
           <button onClick={handleLeave} className="text-red-500 text-sm underline mt-2">
             Leave Game

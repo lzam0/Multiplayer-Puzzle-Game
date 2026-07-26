@@ -28,15 +28,22 @@ describe('TOPICS data', () => {
         }
       });
 
-      it('generates a fully-filled board', () => {
+      it('generates a sparse board with all words traceable', () => {
         const board = game.generateGrid(topic.words);
-        const filled = board.letters.every((r) =>
-          r.every((c) => /^[A-Z]$/.test(c)),
-        );
-        expect(filled).toBe(true);
-        expect(board.rows * board.cols).toBe(
-          topic.words.reduce((n, w) => n + w.length, 0),
-        );
+        const total = topic.words.reduce((n, w) => n + w.length, 0);
+
+        // Grid is larger than word total (sparse layout).
+        expect(board.rows * board.cols).toBeGreaterThan(total);
+
+        // Every cell is either a letter or an empty string.
+        for (const row of board.letters) {
+          for (const cell of row) {
+            expect(cell === '' || /^[A-Z]$/.test(cell)).toBe(true);
+          }
+        }
+
+        // Uppercase normalisation: board.words should match topic.words uppercased.
+        expect(board.words).toEqual(topic.words.map((w) => w.toUpperCase()));
       });
     });
   }

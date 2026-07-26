@@ -47,6 +47,7 @@ interface UseRoomReturn {
   endRound: () => void;
   endGame: () => void;
   traceWord: (word: string, letterIndices: number[]) => void;
+  resetBoard: () => void;
   leave: () => void;
 }
 
@@ -240,6 +241,11 @@ export function useRoom(code: string): UseRoomReturn {
     [socket, code],
   );
 
+  const resetBoard = useCallback(
+    () => setFoundWordIndices([]),
+    [],
+  );
+
   const leave = useCallback(
     () => socket.emit('leave_room', { code }),
     [socket, code],
@@ -268,6 +274,7 @@ export function useRoom(code: string): UseRoomReturn {
     endRound,
     endGame,
     traceWord,
+    resetBoard,
     leave,
   };
 }

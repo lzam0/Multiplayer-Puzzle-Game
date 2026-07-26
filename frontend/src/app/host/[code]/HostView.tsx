@@ -131,21 +131,20 @@ export function HostView({ code }: HostViewProps) {
 
       {/* Round in progress */}
       {phase === 'active' && board && endsAt !== null && (
-        <div className="w-full max-w-2xl space-y-6">
-          <div className="text-center">
-            <p className="text-gray-400 text-sm uppercase tracking-widest">
-              Round {roundIndex + 1} of {totalRounds}
-            </p>
-            <p className="text-3xl font-bold">{topic}</p>
-          </div>
-
-          <div className="bg-gray-800 rounded-2xl p-6 flex justify-center">
+        <div className="w-full max-w-5xl space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-400 text-sm uppercase tracking-widest">
+                Round {roundIndex + 1} of {totalRounds}
+              </p>
+              <p className="text-3xl font-bold">{topic}</p>
+            </div>
             <RoundTimer endsAt={endsAt} />
           </div>
 
-          <div className="bg-gray-800 rounded-2xl p-6 flex flex-col items-center gap-4">
+          <div className="bg-gray-800 rounded-2xl p-6 flex flex-col items-center gap-2">
             <p className="text-sm uppercase tracking-widest text-gray-400">Reference Board</p>
-            <LetterBoard board={board} />
+            <LetterBoard board={board} cellSize="lg" />
           </div>
 
           <div className="bg-gray-800 rounded-2xl p-6">
