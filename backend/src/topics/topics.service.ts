@@ -1,36 +1,57 @@
 import { Injectable } from '@nestjs/common';
-import { Topic } from '../game/game.types';
-import { TOPICS } from './topics.data';
+import Groq from 'groq-sdk';
 
 @Injectable()
 export class TopicsService {
-  private readonly topics: Topic[] = TOPICS;
+  private readonly groq = new Groq({
+    apiKey: process.env.GROQ_API_KEY,
+    timeout: 5000,
+  });
 
-  /** All available topics. */
-  getTopics(): Topic[] {
-    return this.topics;
-  }
+  async generateWords(topic: string): Promise<string[]> {
+    const prompt = `You are a word list generator for a word puzzle game.
+Return ONLY a JSON array of 10 uppercase English words (3–8 letters each, single words only, no proper nouns) strongly associated with the topic: "${topic}".
+Example format: ["WORD","WORD","WORD"]`;
 
-  /** Exact id match. */
-  getTopicById(id: string): Topic | undefined {
-    return this.topics.find((t) => t.id === id);
-  }
+    const completion = await this.groq.chat.completions.create({
+      model: 'llama3-8b-8192',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.7,
+    });
 
-  /**
-   * Resolve a topic by id first, then by case-insensitive label.
-   * The frontend currently sends the display label (e.g. "Animals"), so the
-   * label fallback lets it work without any frontend change.
-   */
-  resolveTopic(idOrLabel: string): Topic | undefined {
-    if (!idOrLabel) return undefined;
-    const byId = this.getTopicById(idOrLabel);
-    if (byId) return byId;
-    const needle = idOrLabel.toLowerCase();
-    return this.topics.find((t) => t.label.toLowerCase() === needle);
-  }
+    const content = completion.choices[0]?.message?.content ?? '';
 
-  /** Words for a topic resolved by id or label, or undefined if unresolved. */
-  getWords(idOrLabel: string): string[] | undefined {
-    return this.resolveTopic(idOrLabel)?.words;
+    // Resilient parse: find first [...] block even if model adds prose
+    const match = content.match(/\[.*?\]/s);
+    if (!match) {
+      throw new Error(`Not enough valid words for "${topic}". Try a different topic.`);
+    }
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(match[0]);
+    } catch {
+      throw new Error(`Not enough valid words for "${topic}". Try a different topic.`);
+    }
+
+    if (!Array.isArray(parsed)) {
+      throw new Error(`Not enough valid words for "${topic}". Try a different topic.`);
+    }
+
+    const valid = [
+      ...new Set(
+        (parsed as unknown[])
+          .filter((w): w is string => typeof w === 'string')
+          .map((w) => w.toUpperCase())
+          .filter((w) => /^[A-Z]{3,8}$/.test(w)),
+      ),
+    ];
+
+    if (valid.length < 6) {
+      throw new Error(`Not enough valid words for "${topic}". Try a different topic.`);
+    }
+
+    const shuffled = valid.sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, Math.min(10, shuffled.length));
   }
 }

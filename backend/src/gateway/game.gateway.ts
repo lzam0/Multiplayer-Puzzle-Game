@@ -67,23 +67,23 @@ export class GameGateway implements OnGatewayDisconnect {
   }
 
   @SubscribeMessage('start_game')
-  handleStartGame(
+  async handleStartGame(
     @MessageBody() data: { code: string; topic: string },
     @ConnectedSocket() client: Socket,
   ) {
-    this.beginRound(data.code, data.topic, client);
+    await this.beginRound(data.code, data.topic, client);
   }
 
   @SubscribeMessage('next_round')
-  handleNextRound(
+  async handleNextRound(
     @MessageBody() data: { code: string; topic: string },
     @ConnectedSocket() client: Socket,
   ) {
-    this.beginRound(data.code, data.topic, client);
+    await this.beginRound(data.code, data.topic, client);
   }
 
   /** Shared round-start path for both start_game and next_round. */
-  private beginRound(code: string, topic: string, client: Socket) {
+  private async beginRound(code: string, topic: string, client: Socket) {
     const room = this.lobbyService.getRoom(code);
     if (!room || room.hostId !== client.id) {
       client.emit('error', { message: 'Only the host can start a round' });
@@ -94,21 +94,25 @@ export class GameGateway implements OnGatewayDisconnect {
       return;
     }
 
-    const resolved = this.topicsService.resolveTopic(topic);
-    if (!resolved) {
-      client.emit('error', { message: 'Unknown topic' });
+    let words: string[];
+    try {
+      words = await this.topicsService.generateWords(topic);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Could not generate words for this topic';
+      client.emit('error', { message });
       return;
     }
 
     let board: LetterGrid;
     try {
-      board = this.gameService.generateGrid(resolved.words);
+      board = this.gameService.generateGrid(words);
     } catch {
       client.emit('error', { message: 'Could not generate a board' });
       return;
     }
 
-    const round = this.lobbyService.startRound(code, resolved.id, board);
+    const round = this.lobbyService.startRound(code, topic, board);
     if (!round) {
       client.emit('error', { message: 'Could not start the round' });
       return;
@@ -117,7 +121,7 @@ export class GameGateway implements OnGatewayDisconnect {
     // Host-only 5s preview. Players receive nothing yet (cannot pre-solve).
     client.emit('round_starting', {
       round: round.index,
-      topic: resolved.label,
+      topic,
       board,
       previewMs: PREVIEW_MS,
       totalRounds: MAX_ROUNDS,
@@ -134,7 +138,7 @@ export class GameGateway implements OnGatewayDisconnect {
         // Board goes live on players' phones; their clocks start now.
         this.server.to(code).emit('round_active', {
           round: round.index,
-          topic: resolved.label,
+          topic,
           board,
           endsAt,
           durationMs: ROUND_DURATION_MS,
