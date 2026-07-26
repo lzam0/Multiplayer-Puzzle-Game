@@ -113,7 +113,7 @@ export function LetterBoard({
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   fill="none"
-                  opacity={0.35}
+                  opacity={0.6}
                   className="word-stroke"
                 />
                 {path.indices.slice(0, -1).map((fromIdx, i) => {
