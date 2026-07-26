@@ -10,11 +10,11 @@ export class TopicsService {
 
   async generateWords(topic: string): Promise<string[]> {
     const prompt = `You are a word list generator for a word puzzle game.
-Return ONLY a JSON array of 10 uppercase English words (3–8 letters each, single words only, no proper nouns) strongly associated with the topic: "${topic}".
+Return ONLY a JSON array of 7 uppercase English words (3–8 letters each, single words only, no proper nouns) strongly associated with the topic: "${topic}".
 Example format: ["WORD","WORD","WORD"]`;
 
     const completion = await this.groq.chat.completions.create({
-      model: 'llama3-8b-8192',
+      model: 'llama-3.3-70b-versatile',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.7,
     });
@@ -47,11 +47,11 @@ Example format: ["WORD","WORD","WORD"]`;
       ),
     ];
 
-    if (valid.length < 6) {
+    if (valid.length < 4) {
       throw new Error(`Not enough valid words for "${topic}". Try a different topic.`);
     }
 
     const shuffled = valid.sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, Math.min(10, shuffled.length));
+    return shuffled.slice(0, Math.min(7, shuffled.length));
   }
 }

@@ -29,13 +29,13 @@ describe('TopicsService', () => {
     expect(service).toBeDefined();
   });
 
-  it('returns 8–10 shuffled valid words on a happy path', async () => {
+  it('returns up to 7 shuffled valid words on a happy path', async () => {
     mockCreate.mockResolvedValueOnce(
       makeResponse('["LION","TIGER","BEAR","EAGLE","SHARK","WOLF","DEER","FROG","CROW","CRAB"]'),
     );
     const words = await service.generateWords('animals');
-    expect(words.length).toBeGreaterThanOrEqual(8);
-    expect(words.length).toBeLessThanOrEqual(10);
+    expect(words.length).toBeGreaterThanOrEqual(4);
+    expect(words.length).toBeLessThanOrEqual(7);
     for (const w of words) {
       expect(w).toMatch(/^[A-Z]{3,8}$/);
     }
@@ -43,7 +43,7 @@ describe('TopicsService', () => {
 
   it('normalises mixed-case words from the model', async () => {
     mockCreate.mockResolvedValueOnce(
-      makeResponse('["lion","Tiger","BEAR","eagle","shark","wolf","deer","frog","crow","crab"]'),
+      makeResponse('["lion","Tiger","BEAR","eagle","shark","wolf","deer"]'),
     );
     const words = await service.generateWords('animals');
     expect(words).toEqual(expect.arrayContaining(['LION', 'TIGER', 'BEAR']));
@@ -77,9 +77,9 @@ describe('TopicsService', () => {
     expect(words.length).toBe(6);
   });
 
-  it('throws when fewer than 6 valid words remain after filtering', async () => {
+  it('throws when fewer than 4 valid words remain after filtering', async () => {
     mockCreate.mockResolvedValueOnce(
-      makeResponse('["LION","BEAR","EAGLE","SHARK","WOLF"]'),
+      makeResponse('["LION","BEAR","EAGLE"]'),
     );
     await expect(service.generateWords('animals')).rejects.toThrow('animals');
   });
@@ -96,10 +96,10 @@ describe('TopicsService', () => {
 
   it('handles model response with prose before the JSON array', async () => {
     mockCreate.mockResolvedValueOnce(
-      makeResponse('Here are 10 words: ["LION","TIGER","BEAR","EAGLE","SHARK","WOLF","DEER","FROG","CROW","CRAB"]'),
+      makeResponse('Here are 7 words: ["LION","TIGER","BEAR","EAGLE","SHARK","WOLF","DEER"]'),
     );
     const words = await service.generateWords('animals');
-    expect(words.length).toBeGreaterThanOrEqual(8);
+    expect(words.length).toBeGreaterThanOrEqual(4);
   });
 
   it('propagates Groq SDK errors to the caller', async () => {
