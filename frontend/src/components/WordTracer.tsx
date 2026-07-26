@@ -12,6 +12,12 @@ interface WordTracerProps {
   locked?: boolean;
 }
 
+function isOrthogonallyAdjacent(a: number, b: number, cols: number): boolean {
+  const dRow = Math.abs(Math.floor(a / cols) - Math.floor(b / cols));
+  const dCol = Math.abs((a % cols) - (b % cols));
+  return (dRow === 1 && dCol === 0) || (dRow === 0 && dCol === 1);
+}
+
 function getCellIndexFromPoint(
   container: HTMLElement,
   clientX: number,
@@ -49,11 +55,15 @@ export function WordTracer({ board, onTrace, foundIndices = [], foundWordPaths, 
       const idx = getCellIndexFromPoint(containerRef.current, clientX, clientY);
       if (idx === null) return;
       setSelectedIndices((prev) => {
+        if (prev.length === 0) return prev;
         if (prev.includes(idx)) return prev;
+        // Only extend the path to orthogonally adjacent cells — fast drags on
+        // mobile can skip intermediate cells, producing paths the server rejects.
+        if (!isOrthogonallyAdjacent(prev[prev.length - 1], idx, board.cols)) return prev;
         return [...prev, idx];
       });
     },
-    [],
+    [board.cols],
   );
 
   const endTrace = useCallback(() => {
