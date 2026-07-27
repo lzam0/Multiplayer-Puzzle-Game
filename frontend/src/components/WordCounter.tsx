@@ -9,13 +9,7 @@ interface WordCounterProps {
 export function WordCounter({ words, foundWords, wordColors }: WordCounterProps) {
   const foundSet = new Set(foundWords);
 
-  const sorted = [...words].sort((a, b) => {
-    const af = foundSet.has(a);
-    const bf = foundSet.has(b);
-    if (af && !bf) return -1;
-    if (!af && bf) return 1;
-    return 0;
-  });
+  const sorted = [...words].sort((a, b) => a.length - b.length);
 
   return (
     <div className="flex flex-col gap-2">
