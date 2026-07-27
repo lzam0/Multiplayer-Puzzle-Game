@@ -53,9 +53,12 @@ export function SoloView() {
   const startRound = async () => {
     setPhase('loading');
     setErrorMsg(null);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
     try {
       const res = await fetch(
         `${BACKEND_URL}/game/board?topic=${encodeURIComponent(topicInput)}`,
+        { signal: controller.signal },
       );
       if (!res.ok) throw new Error('Failed to generate board');
       const { board: newBoard } = (await res.json()) as { board: LetterGrid };
@@ -69,6 +72,8 @@ export function SoloView() {
     } catch {
       setErrorMsg('Could not generate board — try a different topic.');
       setPhase('topic-entry');
+    } finally {
+      clearTimeout(timeoutId);
     }
   };
 

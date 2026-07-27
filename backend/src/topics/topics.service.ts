@@ -6,6 +6,7 @@ export class TopicsService {
   private readonly groq = new Groq({
     apiKey: process.env.GROQ_API_KEY,
     timeout: 5000,
+    maxRetries: 1,
   });
 
   async generateWords(topic: string): Promise<string[]> {

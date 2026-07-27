@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { LetterGrid, Round, RoundRankEntry, Player } from './game.types';
-import { MAX_GEN_ATTEMPTS, NON_FINISH_PENALTY_MS } from './game.constants';
+import { MAX_GEN_ATTEMPTS, GEN_TIME_BUDGET_MS, NON_FINISH_PENALTY_MS } from './game.constants';
 
 type Cell = { row: number; col: number };
 
@@ -28,11 +28,13 @@ export class GameService {
     // Longest words first — they are the hardest to place.
     const ordered = [...clean].sort((a, b) => b.length - a.length);
 
+    const deadline = Date.now() + GEN_TIME_BUDGET_MS;
     for (let attempt = 0; attempt < MAX_GEN_ATTEMPTS; attempt++) {
+      if (Date.now() > deadline) break;
       const grid: (string | null)[][] = Array.from({ length: rows }, () =>
         Array.from({ length: cols }, () => null),
       );
-      if (this.placeWords(ordered, 0, grid, rows, cols)) {
+      if (this.placeWords(ordered, 0, grid, rows, cols, deadline)) {
         return {
           letters: grid.map((r) => r.map((c) => c ?? '')),
           words: clean,
@@ -63,7 +65,9 @@ export class GameService {
     grid: (string | null)[][],
     rows: number,
     cols: number,
+    deadline: number,
   ): boolean {
+    if (Date.now() > deadline) return false;
     if (i === words.length) {
       // Each word must have exactly one valid path on the board so that no word
       // can be accidentally found by tracing another word's adjacent cells.
@@ -72,12 +76,13 @@ export class GameService {
     const word = words[i];
     const starts = this.shuffle(this.emptyCells(grid, rows, cols));
     for (const start of starts) {
+      if (Date.now() > deadline) return false;
       const path: Cell[] = [];
-      if (this.tracePath(word, 0, start, grid, rows, cols, path)) {
+      if (this.tracePath(word, 0, start, grid, rows, cols, path, deadline)) {
         for (let k = 0; k < path.length; k++) {
           grid[path[k].row][path[k].col] = word[k];
         }
-        if (this.placeWords(words, i + 1, grid, rows, cols)) return true;
+        if (this.placeWords(words, i + 1, grid, rows, cols, deadline)) return true;
         // Backtrack.
         for (const cell of path) grid[cell.row][cell.col] = null;
       }
@@ -94,21 +99,28 @@ export class GameService {
     rows: number,
     cols: number,
     path: Cell[],
+    deadline: number,
   ): boolean {
+    if (Date.now() > deadline) return false;
     if (grid[cell.row][cell.col] !== null) return false;
     if (path.some((c) => c.row === cell.row && c.col === cell.col))
       return false;
     path.push(cell);
     if (k === word.length - 1) return true;
     for (const next of this.shuffle(this.neighbors(cell, rows, cols))) {
-      if (this.tracePath(word, k + 1, next, grid, rows, cols, path))
+      if (this.tracePath(word, k + 1, next, grid, rows, cols, path, deadline))
         return true;
     }
     path.pop();
     return false;
   }
 
-  /** Count how many distinct orthogonal paths on the grid spell `word`. */
+  /**
+   * Count distinct orthogonal paths on the grid that spell `word`, capped at 2.
+   * The uniqueness gate only needs "exactly one" vs "not exactly one", so
+   * counting beyond 2 is wasted work — stopping early cuts exponential DFS cost
+   * on high-overlap word lists.
+   */
   private countPaths(
     word: string,
     grid: (string | null)[][],
@@ -117,6 +129,7 @@ export class GameService {
   ): number {
     let total = 0;
     const dfs = (k: number, r: number, c: number, seen: Set<number>): void => {
+      if (total >= 2) return;
       if (r < 0 || r >= rows || c < 0 || c >= cols) return;
       if (grid[r][c] !== word[k]) return;
       const idx = r * cols + c;
@@ -134,6 +147,7 @@ export class GameService {
     };
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
+        if (total >= 2) break;
         dfs(0, r, c, new Set());
       }
     }

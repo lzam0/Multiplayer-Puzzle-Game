@@ -18,5 +18,8 @@ export const NON_FINISH_PENALTY_MS = ROUND_DURATION_MS + 30000; // 120000
 /** Max board-generation attempts before giving up. */
 export const MAX_GEN_ATTEMPTS = 60;
 
+/** Hard wall-clock budget for a single generateGrid call (ms). Prevents event-loop hangs. */
+export const GEN_TIME_BUDGET_MS = 750;
+
 /** Per-socket trace_word rate limit (submissions per second). */
 export const MAX_TRACE_PER_SEC = 10;

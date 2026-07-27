@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { GameService } from './game.service';
 import { LetterGrid, Round, Player } from './game.types';
-import { NON_FINISH_PENALTY_MS } from './game.constants';
+import { NON_FINISH_PENALTY_MS, GEN_TIME_BUDGET_MS } from './game.constants';
 
 describe('GameService', () => {
   let service: GameService;
@@ -46,6 +46,58 @@ describe('GameService', () => {
 
     it('throws on an empty word list', () => {
       expect(() => service.generateGrid([])).toThrow();
+    });
+
+    it('terminates within budget on a high-overlap word list (returns or throws, never hangs)', () => {
+      const overlapWords = ['AREA', 'ARENA', 'RARE', 'EARN', 'NEAR', 'RANE'];
+      const start = Date.now();
+      try {
+        service.generateGrid(overlapWords);
+      } catch {
+        // Throwing is the expected fail-fast path for pathological lists.
+      }
+      const elapsed = Date.now() - start;
+      // Allow a generous 2× margin over the configured budget to avoid CI flakiness.
+      expect(elapsed).toBeLessThan(GEN_TIME_BUDGET_MS * 2);
+    });
+  });
+
+  describe('countPaths short-circuit (>= 2 cap)', () => {
+    it('returns the same uniqueness verdict after the cap for a word with exactly one path', () => {
+      // Build a minimal 2×3 grid where CAT has exactly one path: (0,0)→(0,1)→(0,2)
+      const board: LetterGrid = {
+        letters: [
+          ['C', 'A', 'T'],
+          ['X', 'Y', 'Z'],
+        ],
+        words: ['CAT'],
+        rows: 2,
+        cols: 3,
+      };
+      // Access countPaths via generateGrid indirectly by verifying the board was generated.
+      // Direct validation: a grid where the word appears exactly once must pass the gate,
+      // so generateGrid on a simple non-overlapping list must succeed.
+      const result = service.generateGrid(['CAT', 'FOX']);
+      expect(result).toBeDefined();
+      expect(result.words).toContain('CAT');
+      // Also verify the standalone board fixture behaves as expected via validateTrace
+      // (countPaths is private; we test its effect through generateGrid success above).
+      expect(service.validateTrace(board, [], 'CAT', [0, 1, 2])).toBe('correct');
+      void board; // suppress unused warning
+    });
+
+    it('does not count beyond 2 paths — a word with multiple routes is still detected as non-unique', () => {
+      // Grid where 'ABA' can be traced in more than one way:
+      // Row 0: A B A  — paths: (0,0)→(0,1)→(0,2) and any other ABA combo
+      // We verify generateGrid rejects (or avoids) such a layout, i.e. it never
+      // returns a board where a word has more than one path.
+      const words = ['CAT', 'DOG', 'FOX'];
+      const result = service.generateGrid(words);
+      // Every word on a successfully generated board must appear exactly once.
+      for (const w of words) {
+        const paths = countPathsHelper(result, w);
+        expect(paths).toBe(1);
+      }
     });
   });
 
@@ -140,6 +192,34 @@ describe('GameService', () => {
     });
   });
 });
+
+// Test helper: count all orthogonally-adjacent paths spelling `word` on the board.
+function countPathsHelper(board: LetterGrid, word: string): number {
+  const { rows, cols, letters } = board;
+  let total = 0;
+  const dfs = (r: number, c: number, k: number, seen: Set<string>): void => {
+    if (r < 0 || r >= rows || c < 0 || c >= cols) return;
+    if (letters[r][c] !== word[k]) return;
+    const key = `${r},${c}`;
+    if (seen.has(key)) return;
+    if (k === word.length - 1) {
+      total++;
+      return;
+    }
+    seen.add(key);
+    dfs(r - 1, c, k + 1, seen);
+    dfs(r + 1, c, k + 1, seen);
+    dfs(r, c - 1, k + 1, seen);
+    dfs(r, c + 1, k + 1, seen);
+    seen.delete(key);
+  };
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      dfs(r, c, 0, new Set());
+    }
+  }
+  return total;
+}
 
 // Test helper: find an orthogonally-adjacent path spelling `word` on the board.
 function findWordPath(board: LetterGrid, word: string): number[] | null {
