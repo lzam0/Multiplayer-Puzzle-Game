@@ -11,6 +11,7 @@ export class TopicsService {
   async generateWords(topic: string): Promise<string[]> {
     const prompt = `You are a word list generator for a word puzzle game.
 Return ONLY a JSON array of 7 uppercase English words (3–8 letters each, single words only, no proper nouns) strongly associated with the topic: "${topic}".
+Include a mix of word lengths — at least 2 words must be 3 or 4 letters long.
 Example format: ["WORD","WORD","WORD"]`;
 
     const completion = await this.groq.chat.completions.create({
