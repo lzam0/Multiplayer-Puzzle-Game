@@ -1,36 +1,24 @@
-# Multiplayer Puzzle Game — WEND
+# WEND — Multiplayer Word Puzzle Game
 
-A real-time multiplayer adaptation of LinkedIn's WEND word puzzle game. Players join a shared lobby from their mobile devices and collaborate (or compete) to solve a themed letter grid together.
+A real-time multiplayer word puzzle game. A host runs a room on a shared screen; players solve on their phones. Each round a letter grid is generated from a topic's word list and players race independently to trace all the words. Fastest total time across 3 rounds wins.
 
-## What is WEND?
+## How to Play
 
-WEND is a letter grid puzzle where players connect adjacent letters (horizontally or vertically) to form hidden words. Every letter on the board must be used exactly once, and words cannot overlap. The round ends when all words are found and the board is cleared.
-
-In this multiplayer version, a host creates a room, selects a topic, and a themed letter grid is generated for the whole group to solve together in real time.
-
-## How to Join a Game
-
-- Navigate to the game URL on your mobile device
-- Enter the **4-digit room code** shown on the host screen, or scan the **QR code**
-- Enter your name and you're in
+- The host creates a room and types any topic (e.g. "Space", "Pokemon", "Kitchen")
+- Players join from their phones by scanning the QR code or entering the 4-digit room code
+- Each round: a letter grid appears on the host screen first (5s preview), then goes live on all phones
+- Players trace words by connecting adjacent letters — horizontally or vertically, no diagonals
+- Your timer runs from the moment the board goes live; finish all words as fast as possible
+- Lowest total time across all 3 rounds wins
 
 ## Tech Stack
 
 | Layer | Technology |
 |---|---|
-| Backend | NestJS + Socket.io (WebSockets) |
-| Frontend | Next.js 14 (App Router) + Tailwind CSS |
-| Real-time | Socket.io (server + client) |
-| State | In-memory (no database) |
-
-## Project Structure
-
-```
-.
-├── backend/       # NestJS API + WebSocket gateway
-├── frontend/      # Next.js host + player UI
-└── docs/          # Architecture, game design, and API docs
-```
+| Backend | NestJS + Socket.io, port **8888** |
+| Frontend | Next.js 14 App Router + Tailwind CSS, port **3333** |
+| Word generation | Groq API (`llama-3.3-70b-versatile`) |
+| State | In-memory — no database |
 
 ## Running Locally
 
@@ -43,22 +31,59 @@ cd frontend && npm install && npm run dev
 ```
 
 Host view: `http://localhost:3333`
-Backend: `http://localhost:8888`
+Backend API: `http://localhost:8888`
 
-## Implementation Status
+### Environment Variables
 
-| Area | Status | Notes |
-|---|---|---|
-| Room creation (REST) | Done | `POST /lobby`, `GET /lobby/:code` |
-| Lobby WebSocket join/leave | Done | `join_room`, disconnect handling |
-| Host view (QR + lobby + topic) | Done | `/host/[code]` |
-| Player view (name entry + lobby) | Done | `/play/[code]` |
-| `start_game` event | Partial | Emits `game_started` with topic; board generation not yet implemented |
-| `trace_word` event | Not started | Backend handler missing; `GameService` is a stub |
-| Board / grid generation | Not started | `GameService` is empty |
-| Topic data | Not started | `TopicsService` is a stub; `topics.data.ts` does not exist yet |
-| `word_correct` / `word_incorrect` | Not started | Depends on board generation |
-| Scoreboard / `game_over` | UI ready | Frontend complete; backend event not yet emitted |
+Create `backend/.env`:
+
+```
+GROQ_API_KEY=your_key_here
+```
+
+Get a free API key at [console.groq.com](https://console.groq.com). The free tier allows 14,400 requests/day — well beyond any realistic game session volume.
+
+## Word Generation
+
+When a host starts a round, the backend prompts Groq's `llama-3.3-70b-versatile` model to generate a word list for the topic. Words are validated before use:
+
+| Rule | Detail |
+|---|---|
+| 3–8 letters | Shorter or longer words are filtered out |
+| Alpha only | No digits, hyphens, or symbols |
+| No proper nouns | Enforced by the prompt |
+| Single words only | No phrases |
+| 4–6 words per board | Groq is prompted for 6; at least 4 must pass validation |
+| Mix of lengths | Prompt requires at least 2 short words (3–4 letters) |
+
+If fewer than 4 valid words come back, the host sees an error and can try a different topic.
+
+## Board Generation
+
+The board is a sparse rectangular grid where each word occupies a contiguous orthogonally-adjacent path and no two words share a cell. Generation uses a randomised backtracking algorithm with a **two-pass strategy**:
+
+1. **Strict pass (750ms):** Tries to place all words such that each word has exactly one valid traceable path on the board. This prevents a player from accidentally tracing a word via an unintended route.
+2. **Relaxed pass (750ms fallback):** If the strict pass times out (common with high-overlap word lists like "pokemon"), a second attempt runs without the uniqueness constraint. Words are still placed in non-overlapping cells — a valid board is always produced.
+
+If both passes fail (extremely unlikely), the host sees an error.
+
+## Project Structure
+
+```
+.
+├── backend/src/
+│   ├── lobby/          # Room creation, player management, round lifecycle
+│   ├── game/           # Board generation, word validation, ranking
+│   ├── topics/         # Groq word generation
+│   └── gateway/        # WebSocket event handlers
+├── frontend/src/
+│   ├── app/host/[code] # Host view — QR, lobby, board, timer
+│   ├── app/play/[code] # Player view — board, word tracer
+│   ├── app/solo/       # Solo mode — single player, any topic
+│   ├── hooks/          # useRoom.ts, useSocket.ts
+│   └── lib/types.ts    # Shared types
+└── docs/               # Architecture, WebSocket events, game design, topics
+```
 
 ## Docs
 
@@ -66,4 +91,4 @@ See the [`docs/`](./docs/) folder for:
 - Architecture overview
 - WebSocket event reference
 - Game design spec
-- Topic format guide
+- Topic and word generation guide
