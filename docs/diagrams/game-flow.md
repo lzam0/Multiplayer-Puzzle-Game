@@ -40,6 +40,24 @@ stateDiagram-v2
     Done: Done\n"Waiting for others…"
 ```
 
+## Solo Mode Phase Machine
+
+```mermaid
+stateDiagram-v2
+    [*] --> TopicEntry
+
+    TopicEntry --> Loading: submit topic
+    Loading --> Playing: GET /game/board succeeds\nboard returned
+    Loading --> TopicEntry: error (Groq or generation failed)\nerror message shown
+    Playing --> RoundResult: all words found\nclient stopwatch stops
+    RoundResult --> TopicEntry: Next Round / Done
+
+    TopicEntry: Topic Entry\nFree-text input
+    Loading: Loading\nFetch board via REST\n12s client timeout
+    Playing: Playing\nClient-side stopwatch\nWordTracer + WordCounter
+    RoundResult: Round Result\nTime · session best · total
+```
+
 ## Round Timer & Scoring
 
 ```mermaid

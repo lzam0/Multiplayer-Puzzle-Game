@@ -70,7 +70,7 @@ Topics are generated on demand by the Groq API (`llama-3.3-70b-versatile`) rathe
 | `game/game.service.ts` | Sparse grid generation, word validation, round ranking | ✓ Done |
 | `game/game.controller.ts` | `GET /game/board?topic=` — REST endpoint for solo mode board generation | ✓ Done |
 | `game/game.types.ts` | `Room`, `Player`, `LetterGrid`, `Round`, `RoundRankEntry`, `PodiumEntry` interfaces | ✓ Done |
-| `game/game.constants.ts` | `PREVIEW_MS`, `ROUND_DURATION_MS`, `MAX_ROUNDS`, `NON_FINISH_PENALTY_MS`, `MAX_TRACE_PER_SEC` | ✓ Done |
+| `game/game.constants.ts` | `PREVIEW_MS`, `ROUND_DURATION_MS`, `MAX_ROUNDS`, `NON_FINISH_PENALTY_MS`, `MAX_TRACE_PER_SEC`, `GEN_TIME_BUDGET_MS`, `MAX_GEN_ATTEMPTS` | ✓ Done |
 | `gateway/game.gateway.ts` | All WebSocket event handlers; async round-start with Groq fetch | ✓ Done |
 | `topics/topics.service.ts` | `generateWords(topic)` — Groq API call + validation pipeline | ✓ Done |
 | `app.module.ts` | Root module wiring all submodules | ✓ Done |

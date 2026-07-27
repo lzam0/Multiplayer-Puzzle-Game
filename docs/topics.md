@@ -50,6 +50,18 @@ These still work as free-text topic inputs — Groq will generate appropriate wo
 | Model | `llama-3.3-70b-versatile` |
 | Temperature | `0.7` |
 | Timeout | `5000ms` |
+| Max retries | `1` |
 | API key env var | `GROQ_API_KEY` in `backend/.env` |
 
 The Groq free tier allows 14,400 requests/day — well beyond any realistic game session volume.
+
+## Board Generation and Word Overlap
+
+Some topics produce word lists with high letter overlap (e.g. "pokemon" → CATCH, ATTACK, WATER, BATTLE). This makes the backtracking board packer exponentially harder: the strict uniqueness gate (each word must have exactly one traceable path) rejects most candidate placements.
+
+To handle this, `GameService.generateGrid` uses a two-pass strategy:
+
+1. **Strict pass (750ms)** — uniqueness gate on; ideal puzzle clarity
+2. **Relaxed pass (750ms fallback)** — uniqueness gate off; words are placed in non-overlapping cells but may share traceable paths
+
+The relaxed pass ensures a board is always produced for any valid topic. Both budgets are controlled by `GEN_TIME_BUDGET_MS` in `game.constants.ts`.

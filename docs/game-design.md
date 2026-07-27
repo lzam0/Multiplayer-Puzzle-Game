@@ -44,7 +44,7 @@ The server receives the Groq-generated word list and lays out letters on a **spa
 - No two words share a cell
 - Non-word cells are left empty (`''`) and rendered as inert grey tiles on the board
 - Grid is sized with ~1.5× padding over total word letters, giving an irregular silhouette
-- Each word has exactly **one** valid path on the board (enforced by the packer — ambiguous layouts are rejected and retried)
+- The packer uses a **two-pass strategy**: strict pass first (ensures each word has exactly one valid traceable path); if that times out on high-overlap word lists, a relaxed pass runs without the uniqueness constraint — all words are still placed in non-overlapping cells
 - Words are placed longest-first to minimise backtracking
 
 ## Word Validation
@@ -78,12 +78,12 @@ See `docs/topics.md` for details on the word format.
 
 ## Backend Status
 
-- **36/36 tests passing** across 5 test suites
+- **39/39 tests passing** across 5 test suites
 - Phases 1–6 complete and committed
 
 ### What's implemented
 - `TopicsService.generateWords` — Groq-powered dynamic word generation for any topic
-- `GameService.generateGrid` — sparse backtracking packer with uniqueness enforcement
+- `GameService.generateGrid` — sparse backtracking packer with two-pass strategy (strict uniqueness gate, then relaxed fallback)
 - `GameService.validateTrace` — adjacency + membership + per-player dedup
 - Full Kahoot-style round flow: `start_game` → 5s preview → `round_active` → `round_over` → `game_over`
 - Server-authoritative 90s round timer; host can end early
