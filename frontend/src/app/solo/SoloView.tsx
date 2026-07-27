@@ -99,6 +99,11 @@ export function SoloView() {
     setPhase('topic-entry');
   };
 
+  const resetBoard = () => {
+    setFoundWords([]);
+    setFoundWordPaths([]);
+  };
+
   const wordColors = Object.fromEntries(foundWordPaths.map((p) => [p.word, p.color]));
   const foundWordIndices = foundWordPaths.flatMap((p) => p.indices);
 
@@ -176,6 +181,7 @@ export function SoloView() {
               onTrace={handleTrace}
               foundIndices={foundWordIndices}
               foundWordPaths={foundWordPaths}
+              onReset={resetBoard}
             />
           </div>
 

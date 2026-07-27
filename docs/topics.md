@@ -17,7 +17,8 @@ Words returned by Groq are validated to this shape before use:
 
 ## Word Count
 
-- **4–7 words per board** — Groq is prompted for 7; the validation pipeline filters and deduplicates, requiring at least 4 valid words to proceed
+- **4–6 words per board** — Groq is prompted for 6; the validation pipeline filters and deduplicates, requiring at least 4 valid words to proceed
+- The prompt requires at least 2 words to be 3 or 4 letters long, ensuring a mix of short and longer words on every board
 - If fewer than 4 valid words remain after filtering, the gateway emits an `error` event to the host and they can try a different topic
 
 ## Adding / Changing Topics

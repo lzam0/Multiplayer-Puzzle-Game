@@ -58,13 +58,13 @@ When a player submits a trace:
 
 ## Topics
 
-Topics are generated dynamically by Groq (`llama-3.3-70b-versatile`) on demand. The host types any free-text topic; the backend prompts Groq for 7 uppercase, 3–8 letter English words strongly associated with that topic.
+Topics are generated dynamically by Groq (`llama-3.3-70b-versatile`) on demand. The host types any free-text topic; the backend prompts Groq for 6 uppercase, 3–8 letter English words strongly associated with that topic. The prompt requires at least 2 words to be 3 or 4 letters long to ensure a mix of word lengths.
 
 Validation pipeline:
 - Filter to `/^[A-Z]{3,8}$/`
 - Deduplicate
 - Require at least 4 valid words or return an error to the host
-- Shuffle, return up to 7
+- Shuffle, return up to 6
 
 See `docs/topics.md` for details on the word format.
 
@@ -79,7 +79,7 @@ See `docs/topics.md` for details on the word format.
 ## Backend Status
 
 - **36/36 tests passing** across 5 test suites
-- All phases (1–4) complete and committed
+- Phases 1–6 complete and committed
 
 ### What's implemented
 - `TopicsService.generateWords` — Groq-powered dynamic word generation for any topic
@@ -90,11 +90,16 @@ See `docs/topics.md` for details on the word format.
 - Per-player independent solve; completion time computed server-side
 - `LobbyService.claimHost` — host sentinel pattern
 - Rate-limited `trace_word` handler
+- `GET /game/board?topic=` REST endpoint for solo mode board generation
 
 See `docs/websocket-events.md` for the full socket contract.
+
+### Frontend features
+- SVG stroke overlay — found words rendered as colored paths over the board (Phase 5)
+- `WordCounter` — letter-slot boxes sorted shortest-to-longest; fills with stroke color on find
+- Solo mode (`/solo`) — single-player, client-side stopwatch, session best tracking, Groq-powered boards
 
 ## What's Not Yet Implemented
 
 - **`leave_room` handler** — frontend emits it on disconnect but the backend has no listener; disconnect handling does clean up players automatically
-- **Word animations** — no animation on word discovery (Phase 3 non-goal)
 - **Diagonal word placement** — orthogonal only
