@@ -43,7 +43,7 @@ describe('TopicsService', () => {
 
   it('normalises mixed-case words from the model', async () => {
     mockCreate.mockResolvedValueOnce(
-      makeResponse('["lion","Tiger","BEAR","eagle","shark","wolf","deer"]'),
+      makeResponse('["lion","Tiger","BEAR","eagle","shark","wolf"]'),
     );
     const words = await service.generateWords('animals');
     expect(words).toEqual(expect.arrayContaining(['LION', 'TIGER', 'BEAR']));

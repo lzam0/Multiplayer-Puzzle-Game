@@ -28,21 +28,31 @@ export class GameService {
     // Longest words first — they are the hardest to place.
     const ordered = [...clean].sort((a, b) => b.length - a.length);
 
-    const deadline = Date.now() + GEN_TIME_BUDGET_MS;
-    for (let attempt = 0; attempt < MAX_GEN_ATTEMPTS; attempt++) {
-      if (Date.now() > deadline) break;
-      const grid: (string | null)[][] = Array.from({ length: rows }, () =>
-        Array.from({ length: cols }, () => null),
-      );
-      if (this.placeWords(ordered, 0, grid, rows, cols, deadline)) {
-        return {
-          letters: grid.map((r) => r.map((c) => c ?? '')),
-          words: clean,
-          rows,
-          cols,
-        };
+    const tryGenerate = (strict: boolean): LetterGrid | null => {
+      const deadline = Date.now() + GEN_TIME_BUDGET_MS;
+      for (let attempt = 0; attempt < MAX_GEN_ATTEMPTS; attempt++) {
+        if (Date.now() > deadline) break;
+        const grid: (string | null)[][] = Array.from({ length: rows }, () =>
+          Array.from({ length: cols }, () => null),
+        );
+        if (this.placeWords(ordered, 0, grid, rows, cols, deadline, strict)) {
+          return {
+            letters: grid.map((r) => r.map((c) => c ?? '')),
+            words: clean,
+            rows,
+            cols,
+          };
+        }
       }
-    }
+      return null;
+    };
+
+    const strict = tryGenerate(true);
+    if (strict) return strict;
+
+    const relaxed = tryGenerate(false);
+    if (relaxed) return relaxed;
+
     throw new Error('Could not generate a board');
   }
 
@@ -58,7 +68,7 @@ export class GameService {
     return { rows, cols };
   }
 
-  /** Recursively place words[i..] into the grid. Returns true when all words are placed with unique paths. */
+  /** Recursively place words[i..] into the grid. Returns true when all words are placed. When strict=true, also verifies each word has exactly one valid path. */
   private placeWords(
     words: string[],
     i: number,
@@ -66,9 +76,11 @@ export class GameService {
     rows: number,
     cols: number,
     deadline: number,
+    strict = true,
   ): boolean {
     if (Date.now() > deadline) return false;
     if (i === words.length) {
+      if (!strict) return true;
       // Each word must have exactly one valid path on the board so that no word
       // can be accidentally found by tracing another word's adjacent cells.
       return words.every((w) => this.countPaths(w, grid, rows, cols) === 1);
@@ -82,7 +94,7 @@ export class GameService {
         for (let k = 0; k < path.length; k++) {
           grid[path[k].row][path[k].col] = word[k];
         }
-        if (this.placeWords(words, i + 1, grid, rows, cols, deadline)) return true;
+        if (this.placeWords(words, i + 1, grid, rows, cols, deadline, strict)) return true;
         // Backtrack.
         for (const cell of path) grid[cell.row][cell.col] = null;
       }
