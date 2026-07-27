@@ -264,7 +264,8 @@ export function useRoom(code: string): UseRoomReturn {
   const resetBoard = useCallback(() => {
     setFoundWordPaths([]);
     setFoundWords([]);
-  }, []);
+    socket.emit('reset_board', { code });
+  }, [socket, code]);
 
   const leave = useCallback(
     () => socket.emit('leave_room', { code }),

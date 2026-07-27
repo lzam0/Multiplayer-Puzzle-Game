@@ -206,6 +206,22 @@ export class LobbyService {
     return round;
   }
 
+  /**
+   * Clear a player's found-words state so they can re-trace words after
+   * pressing reset. Only allowed during an active round for players who have
+   * not yet finished. Returns true on success, false otherwise.
+   */
+  resetPlayerWords(code: string, playerId: string): boolean {
+    const room = this.rooms.get(code);
+    const round = room?.currentRound;
+    if (!room || !round || round.phase !== 'active') return false;
+    const state = round.playerStates.get(playerId);
+    if (!state) return false;
+    if (state.completedAt !== null) return false;
+    state.foundWords = [];
+    return true;
+  }
+
   setStatus(code: string, status: Room['status']): void {
     const room = this.rooms.get(code);
     if (room) room.status = status;

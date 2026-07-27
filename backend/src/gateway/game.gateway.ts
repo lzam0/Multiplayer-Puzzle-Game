@@ -215,6 +215,20 @@ export class GameGateway implements OnGatewayDisconnect {
     }
   }
 
+  @SubscribeMessage('reset_board')
+  handleResetBoard(
+    @MessageBody() data: { code: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const room = this.lobbyService.getRoom(data.code);
+    const round = room?.currentRound;
+    if (!room || !round || round.phase !== 'active') return;
+    if (!room.players.some((p) => p.id === client.id)) return;
+    const ok = this.lobbyService.resetPlayerWords(data.code, client.id);
+    if (!ok) return;
+    client.emit('board_reset', { code: data.code });
+  }
+
   @SubscribeMessage('end_round')
   handleEndRound(
     @MessageBody() data: { code: string },

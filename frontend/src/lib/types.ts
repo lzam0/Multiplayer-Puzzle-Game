@@ -156,3 +156,12 @@ export interface TraceWordPayload {
 export interface LeaveRoomPayload {
   code: string;
 }
+
+export interface ResetBoardPayload {
+  code: string;
+}
+
+// Server → Client ack for reset_board
+export interface BoardResetPayload {
+  code: string;
+}

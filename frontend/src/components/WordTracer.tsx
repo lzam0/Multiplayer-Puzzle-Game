@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { LetterGrid, WordPath } from '@/lib/types';
 import { LetterBoard } from './LetterBoard';
 
@@ -57,25 +57,40 @@ function fillBetween(from: number, to: number, cols: number): number[] | null {
 
 export function WordTracer({ board, onTrace, foundIndices = [], foundWordPaths, locked = false, onReset }: WordTracerProps) {
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
+  const [lockedFlashIndex, setLockedFlashIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const isTracingRef = useRef(false);
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Canonical path ref — kept in sync with selectedIndices state so that
   // endTrace can read the current path directly without a setState callback.
   // This avoids calling onTrace (a socket emit) inside a setState updater,
   // which React StrictMode would double-invoke in development.
   const traceRef = useRef<number[]>([]);
 
+  useEffect(() => {
+    return () => {
+      if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+    };
+  }, []);
+
   const startTrace = useCallback(
     (clientX: number, clientY: number) => {
       if (locked || !containerRef.current) return;
-      isTracingRef.current = true;
       const idx = getCellIndexFromPoint(containerRef.current, clientX, clientY);
+      if (idx !== null && foundIndices.includes(idx)) {
+        // Tapped a locked cell: show shake + red flash, then cancel the trace.
+        if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+        setLockedFlashIndex(idx);
+        flashTimerRef.current = setTimeout(() => setLockedFlashIndex(null), 300);
+        return;
+      }
+      isTracingRef.current = true;
       if (idx !== null) {
         traceRef.current = [idx];
         setSelectedIndices([idx]);
       }
     },
-    [locked],
+    [locked, foundIndices],
   );
 
   const continueTrace = useCallback(
@@ -155,7 +170,7 @@ export function WordTracer({ board, onTrace, foundIndices = [], foundWordPaths, 
         style={{ touchAction: 'none' }}
         className={locked ? 'cursor-default opacity-80' : 'cursor-pointer'}
       >
-        <LetterBoard board={board} selectedIndices={selectedIndices} foundIndices={foundIndices} foundWordPaths={foundWordPaths} />
+        <LetterBoard board={board} selectedIndices={selectedIndices} foundIndices={foundIndices} foundWordPaths={foundWordPaths} lockedFlashIndex={lockedFlashIndex} />
       </div>
       {onReset && !locked && (
         <button

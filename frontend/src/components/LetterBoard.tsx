@@ -26,6 +26,7 @@ interface LetterBoardProps {
   foundIndices?: number[];
   foundWordPaths?: WordPath[];
   cellSize?: 'sm' | 'md' | 'lg';
+  lockedFlashIndex?: number | null;
 }
 
 export function LetterBoard({
@@ -34,8 +35,10 @@ export function LetterBoard({
   foundIndices = [],
   foundWordPaths,
   cellSize = 'sm',
+  lockedFlashIndex = null,
 }: LetterBoardProps) {
   const selectedSet = new Set(selectedIndices);
+  const foundSet = new Set(foundIndices);
   const sizeClass = CELL_SIZES[cellSize];
   const cellPx = CELL_PX[cellSize];
 
@@ -77,15 +80,21 @@ export function LetterBoard({
             }
 
             const isSelected = selectedSet.has(idx);
+            const isFound = foundSet.has(idx);
+            const isFlashing = lockedFlashIndex === idx;
             return (
               <div
                 key={idx}
                 data-idx={idx}
                 className={`
                   flex items-center justify-center ${sizeClass} rounded font-bold border-2
-                  ${isSelected
-                    ? 'bg-blue-500 text-white border-blue-700'
-                    : 'bg-white text-gray-800 border-gray-300'}
+                  ${isFlashing
+                    ? 'bg-red-400 text-white border-red-600 animate-shake'
+                    : isSelected
+                      ? 'bg-blue-500 text-white border-blue-700'
+                      : isFound
+                        ? 'bg-gray-200 text-gray-500 border-gray-300'
+                        : 'bg-white text-gray-800 border-gray-300'}
                 `}
               >
                 {letter}

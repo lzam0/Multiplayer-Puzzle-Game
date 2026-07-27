@@ -17,6 +17,7 @@ all rounds wins.
 | `trace_word` | `{ code: string, word: string, letterIndices: number[] }` | Implemented | Player submits a traced word (rate-limited) |
 | `end_round` | `{ code: string }` | Implemented | Host ends the current round early |
 | `end_game` | `{ code: string }` | Implemented | Host ends the game and triggers the podium |
+| `reset_board` | `{ code: string }` | Implemented | Player clears their found-words state (multiplayer only; round must be active and player must not have finished) |
 
 `letterIndices` are flat: `row = Math.floor(idx / cols)`, `col = idx % cols`.
 
@@ -34,6 +35,7 @@ all rounds wins.
 | `player_finished` | `{ playerId, name, completionTimeMs }` | host + that player | A player completed their board |
 | `round_over` | `{ rankings, roundIndex, isLastRound }` | room | Round ranking (finishers by time, then non-finishers by words) |
 | `game_over` | `{ scores, podium }` | room | Final results |
+| `board_reset` | `{ code: string }` | caller only | Ack sent to the player whose found-words were cleared by `reset_board` |
 | `error` | `{ message }` | offending client | Invalid action |
 
 Notes:

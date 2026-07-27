@@ -121,4 +121,58 @@ describe('LobbyService', () => {
       service.getRoom(room.code)?.currentRound?.playerStates.has('p1'),
     ).toBe(false);
   });
+
+  describe('resetPlayerWords', () => {
+    it('clears foundWords for an active-round player and returns true', () => {
+      const room = service.createRoom('host');
+      addCompetitor(service, room.code, 'p1', 'Ann');
+      service.startRound(room.code, 'animals', board);
+      service.activateRound(room.code);
+      // Manually add a found word to simulate a prior trace.
+      const state = service
+        .getRoom(room.code)
+        ?.currentRound?.playerStates.get('p1');
+      expect(state).toBeDefined();
+      state!.foundWords.push('CAT');
+      expect(state!.foundWords).toHaveLength(1);
+
+      const ok = service.resetPlayerWords(room.code, 'p1');
+      expect(ok).toBe(true);
+      expect(state!.foundWords).toHaveLength(0);
+    });
+
+    it('returns false and preserves state when player has already finished', () => {
+      const room = service.createRoom('host');
+      addCompetitor(service, room.code, 'p1', 'Ann');
+      service.startRound(room.code, 'animals', board);
+      service.activateRound(room.code);
+      // Complete the board so completedAt is set.
+      service.recordFound(room.code, 'p1', 'CAT');
+      const state = service
+        .getRoom(room.code)
+        ?.currentRound?.playerStates.get('p1');
+      expect(state?.completedAt).not.toBeNull();
+
+      const ok = service.resetPlayerWords(room.code, 'p1');
+      expect(ok).toBe(false);
+      // foundWords still contains the word — state is unchanged.
+      expect(state!.foundWords).toContain('CAT');
+    });
+
+    it('returns false when no active round exists (preview phase)', () => {
+      const room = service.createRoom('host');
+      addCompetitor(service, room.code, 'p1', 'Ann');
+      // Round started but not activated (still in preview).
+      service.startRound(room.code, 'animals', board);
+      const ok = service.resetPlayerWords(room.code, 'p1');
+      expect(ok).toBe(false);
+    });
+
+    it('returns false when no round exists at all', () => {
+      const room = service.createRoom('host');
+      addCompetitor(service, room.code, 'p1', 'Ann');
+      const ok = service.resetPlayerWords(room.code, 'p1');
+      expect(ok).toBe(false);
+    });
+  });
 });
