@@ -14,6 +14,7 @@ import { FinishTracker } from '@/components/FinishTracker';
 import { RoundRankings } from '@/components/RoundRankings';
 import { Podium } from '@/components/Podium';
 import { BackButton } from '@/components/BackButton';
+import { HowToPlay } from '@/components/HowToPlay';
 
 const HOST_SENTINEL = '__host__';
 
@@ -47,6 +48,7 @@ export function HostView({ code }: HostViewProps) {
   const [selectedTopic, setSelectedTopic] = useState('Animals');
   const [joinUrl, setJoinUrl] = useState('');
   const [hasJoined, setHasJoined] = useState(false);
+  const [showHowToPlay, setShowHowToPlay] = useState(false);
 
   useEffect(() => {
     const origin =
@@ -94,6 +96,13 @@ export function HostView({ code }: HostViewProps) {
               <QrJoin url={joinUrl} />
             </div>
           )}
+
+          <button
+            onClick={() => setShowHowToPlay(true)}
+            className="text-sm text-gray-400 underline hover:text-white transition-colors"
+          >
+            How to Play
+          </button>
 
           <div className="w-full max-w-2xl space-y-6">
             <section className="bg-gray-800 rounded-2xl p-6">
@@ -211,6 +220,8 @@ export function HostView({ code }: HostViewProps) {
       {!room && connected && (
         <div className="text-gray-400 italic">Connecting to room…</div>
       )}
+
+      {showHowToPlay && <HowToPlay onClose={() => setShowHowToPlay(false)} />}
     </main>
   );
 }
