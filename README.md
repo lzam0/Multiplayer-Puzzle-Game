@@ -26,22 +26,29 @@ A real-time multiplayer word puzzle game. A host runs a room on a shared screen;
 # Backend
 cd backend && npm install && npm run start:dev
 
-# Frontend
+# Frontend (localhost only)
 cd frontend && npm install && npm run dev
+
+# Frontend (LAN — lets phones on the same Wi-Fi join)
+cd frontend && npm run dev:lan
 ```
+
+`npm run dev:lan` auto-detects your current LAN IP, writes `frontend/.env.local`, and starts the dev server. Use this whenever you want to test with real phones — no manual IP configuration needed.
 
 Host view: `http://localhost:3333`
 Backend API: `http://localhost:8888`
 
 ### Environment Variables
 
-Create `backend/.env`:
+**Backend** — create `backend/.env`:
 
 ```
 GROQ_API_KEY=your_key_here
 ```
 
 Get a free API key at [console.groq.com](https://console.groq.com). The free tier allows 14,400 requests/day — well beyond any realistic game session volume.
+
+**Frontend** — `frontend/.env.local` is written automatically by `npm run dev:lan`. If running `npm run dev` (localhost only), no env file is needed.
 
 ## Word Generation
 

@@ -78,7 +78,7 @@ See `docs/topics.md` for details on the word format.
 
 ## Backend Status
 
-- **39/39 tests passing** across 5 test suites
+- **43/43 tests passing** across 5 test suites
 - Phases 1–6 complete and committed
 
 ### What's implemented

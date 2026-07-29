@@ -102,6 +102,10 @@ Topics are generated on demand by the Groq API (`llama-3.3-70b-versatile`) rathe
 | `components/TopicSelector.tsx` | Free-text `<input>` for topic entry (replaced dropdown) | ✓ Done |
 | `components/LobbyList.tsx` | Player list in lobby | ✓ Done |
 | `components/QrJoin.tsx` | QR code for join URL | ✓ Done |
+| `components/BackButton.tsx` | Fixed top-left "← Home" button; `variant` prop for light/dark backgrounds | ✓ Done |
+| `components/Feedback.tsx` | Toast overlay for `word_correct` / `word_incorrect` feedback | ✓ Done |
+| `components/Scoreboard.tsx` | Legacy score display — superseded by `Podium.tsx`; kept for reference | ✓ Done |
+| `components/FoundWords.tsx` | Legacy found-words list — superseded by `WordCounter.tsx` | ✓ Done |
 
 ## Ports
 
