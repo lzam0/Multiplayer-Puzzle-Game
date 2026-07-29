@@ -13,6 +13,7 @@ import { RoundTimer } from '@/components/RoundTimer';
 import { FinishTracker } from '@/components/FinishTracker';
 import { RoundRankings } from '@/components/RoundRankings';
 import { Podium } from '@/components/Podium';
+import { BackButton } from '@/components/BackButton';
 
 const HOST_SENTINEL = '__host__';
 
@@ -65,6 +66,7 @@ export function HostView({ code }: HostViewProps) {
 
   return (
     <main className="min-h-screen bg-gray-900 text-white flex flex-col items-center p-8 gap-8">
+      <BackButton variant="dark" />
       {!connected && (
         <div className="fixed top-0 left-0 right-0 bg-yellow-500 text-black text-center py-2 font-bold z-50">
           Reconnecting…

@@ -6,6 +6,7 @@ import type { LetterGrid, WordPath } from '@/lib/types';
 import { WordTracer } from '@/components/WordTracer';
 import { WordCounter } from '@/components/WordCounter';
 import { useStopwatch } from '@/hooks/useStopwatch';
+import { BackButton } from '@/components/BackButton';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:8888';
 
@@ -114,6 +115,7 @@ export function SoloView() {
 
   return (
     <main className="min-h-screen bg-white flex flex-col items-center p-4 gap-6 max-w-md mx-auto">
+      <BackButton variant="light" />
       <div className="text-center pt-4">
         <h1 className="text-4xl font-extrabold tracking-tight text-blue-600">WEND</h1>
         <p className="mt-1 text-gray-500 text-sm">Solo</p>

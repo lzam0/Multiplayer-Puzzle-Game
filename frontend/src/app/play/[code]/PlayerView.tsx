@@ -10,6 +10,7 @@ import { WordCounter } from '@/components/WordCounter';
 import { Feedback } from '@/components/Feedback';
 import { RoundRankings } from '@/components/RoundRankings';
 import { Podium } from '@/components/Podium';
+import { BackButton } from '@/components/BackButton';
 
 const HOST_SENTINEL = '__host__';
 
@@ -66,6 +67,7 @@ export function PlayerView({ code }: PlayerViewProps) {
 
   return (
     <main className="min-h-screen bg-white flex flex-col items-center p-4 gap-6 max-w-md mx-auto">
+      <BackButton variant="light" />
       {!connected && (
         <div className="fixed top-0 left-0 right-0 bg-yellow-400 text-black text-center py-2 font-bold z-50 text-sm">
           Reconnecting…
