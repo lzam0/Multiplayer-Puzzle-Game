@@ -89,11 +89,12 @@ Topics are generated on demand by the Groq API (`llama-3.3-70b-versatile`) rathe
 | `hooks/useStopwatch.ts` | Client-side stopwatch (start/stop/reset, 100ms tick) — used by solo mode | ✓ Done |
 | `lib/types.ts` | Frontend mirror of backend types (`Player.totalTimeMs`, `RoundRankEntry`, `PodiumEntry`, etc.) | ✓ Done |
 | `lib/format.ts` | `formatMs(ms)` — shared time formatter | ✓ Done |
-| `lib/config.ts` | `BACKEND_URL` constant from env or fallback | ✓ Done |
+| `lib/config.ts` | `BACKEND_URL` / `WS_URL` constants from env or fallback | ✓ Done |
+| `lib/socket.ts` | Singleton Socket.io client factory (`getSocket()`) | ✓ Done |
 | `context/SocketProvider.tsx` | Socket.io context provider | ✓ Done |
 | `components/LetterBoard.tsx` | Sparse grid renderer; grey inert tiles for `''` cells; `cellSize` prop | ✓ Done |
 | `components/WordTracer.tsx` | Touch/mouse drag trace; SVG stroke overlay for found words; reset button bottom-right | ✓ Done |
-| `components/WordCounter.tsx` | Letter-slot boxes sorted shortest-to-longest; fills with stroke color on find | ✓ Done |
+| `components/WordCounter.tsx` | Compact horizontal-wrap layout; letter-slot boxes (`w-6 h-6`) sorted shortest-to-longest; fills with stroke color on find | ✓ Done |
 | `components/HostBoardPreview.tsx` | 5s host-only board preview with large `LetterBoard` | ✓ Done |
 | `components/RoundTimer.tsx` | Self-correcting countdown from server `endsAt`; turns red < 15s | ✓ Done |
 | `components/FinishTracker.tsx` | Live finisher list with completion times (host only) | ✓ Done |

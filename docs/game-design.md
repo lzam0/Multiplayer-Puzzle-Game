@@ -96,7 +96,7 @@ See `docs/websocket-events.md` for the full socket contract.
 
 ### Frontend features
 - SVG stroke overlay — found words rendered as colored paths over the board (Phase 5)
-- `WordCounter` — letter-slot boxes sorted shortest-to-longest; fills with stroke color on find
+- `WordCounter` — compact horizontal-wrap layout; letter-slot boxes sorted shortest-to-longest; fills with stroke color on find
 - Solo mode (`/solo`) — single-player, client-side stopwatch, session best tracking, Groq-powered boards
 
 ## What's Not Yet Implemented

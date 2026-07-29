@@ -66,7 +66,7 @@ export function PlayerView({ code }: PlayerViewProps) {
   const visiblePlayers = room?.players.filter((p) => p.name !== HOST_SENTINEL) ?? [];
 
   return (
-    <main className="min-h-screen bg-white flex flex-col items-center p-4 gap-6 max-w-md mx-auto">
+    <main className="h-dvh overflow-hidden bg-white flex flex-col items-center p-4 gap-3 max-w-md mx-auto">
       <BackButton variant="light" />
       {!connected && (
         <div className="fixed top-0 left-0 right-0 bg-yellow-400 text-black text-center py-2 font-bold z-50 text-sm">
@@ -136,28 +136,30 @@ export function PlayerView({ code }: PlayerViewProps) {
 
       {/* Round active — interactive board */}
       {myName && phase === 'active' && board && (
-        <div className="flex flex-col gap-4 w-full">
-          <div>
-            <p className="text-xs text-gray-500">Topic</p>
-            <p className="font-bold text-lg">{topic}</p>
+        <div className="flex flex-col gap-3 w-full flex-1 overflow-hidden">
+          <div className="flex items-center justify-between shrink-0">
+            <div>
+              <p className="text-xs text-gray-500">Topic</p>
+              <p className="font-bold text-lg leading-tight">{topic}</p>
+            </div>
           </div>
 
-          {playerFinished ? (
-            <div className="flex flex-col items-center gap-4">
-              <div className="w-full bg-green-50 border-2 border-green-300 rounded-xl p-4 text-center">
-                <p className="text-green-700 font-bold text-lg">Done!</p>
-                <p className="text-green-600 text-sm">Waiting for other players…</p>
-              </div>
-              <WordTracer
-                board={board}
-                onTrace={traceWord}
-                foundIndices={foundWordIndices}
-                foundWordPaths={foundWordPaths}
-                locked
-              />
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-4">
+          <div className="flex flex-col items-center shrink-0">
+            {playerFinished ? (
+              <>
+                <div className="w-full bg-green-50 border-2 border-green-300 rounded-xl p-3 text-center mb-3">
+                  <p className="text-green-700 font-bold">Done!</p>
+                  <p className="text-green-600 text-xs">Waiting for other players…</p>
+                </div>
+                <WordTracer
+                  board={board}
+                  onTrace={traceWord}
+                  foundIndices={foundWordIndices}
+                  foundWordPaths={foundWordPaths}
+                  locked
+                />
+              </>
+            ) : (
               <WordTracer
                 board={board}
                 onTrace={traceWord}
@@ -165,12 +167,14 @@ export function PlayerView({ code }: PlayerViewProps) {
                 foundWordPaths={foundWordPaths}
                 onReset={resetBoard}
               />
-            </div>
-          )}
+            )}
+          </div>
 
-          <WordCounter words={board.words} foundWords={foundWords} wordColors={wordColors} />
+          <div className="flex-1 overflow-y-auto pt-4">
+            <WordCounter words={board.words} foundWords={foundWords} wordColors={wordColors} />
+          </div>
 
-          <button onClick={handleLeave} className="text-red-500 text-sm underline mt-2">
+          <button onClick={handleLeave} className="text-red-500 text-sm underline shrink-0 pb-1">
             Leave Game
           </button>
         </div>

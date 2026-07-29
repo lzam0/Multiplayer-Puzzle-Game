@@ -114,7 +114,7 @@ export function SoloView() {
   const foundWordIndices = foundWordPaths.flatMap((p) => p.indices);
 
   return (
-    <main className="min-h-screen bg-white flex flex-col items-center p-4 gap-6 max-w-md mx-auto">
+    <main className="h-dvh overflow-hidden bg-white flex flex-col items-center p-4 gap-3 max-w-md mx-auto">
       <BackButton variant="light" />
       <div className="text-center pt-4">
         <h1 className="text-4xl font-extrabold tracking-tight text-blue-600">WEND</h1>
@@ -170,11 +170,11 @@ export function SoloView() {
       )}
 
       {phase === 'playing' && board && (
-        <div className="flex flex-col gap-4 w-full">
-          <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 w-full flex-1 overflow-hidden">
+          <div className="flex items-center justify-between shrink-0">
             <div>
               <p className="text-xs text-gray-500">Topic</p>
-              <p className="font-bold text-lg">{topic}</p>
+              <p className="font-bold text-lg leading-tight">{topic}</p>
             </div>
             <div className="text-right">
               <p className="text-xs text-gray-500">Time</p>
@@ -182,7 +182,7 @@ export function SoloView() {
             </div>
           </div>
 
-          <div className="flex flex-col items-center gap-4">
+          <div className="flex flex-col items-center shrink-0">
             <WordTracer
               board={board}
               onTrace={handleTrace}
@@ -192,7 +192,9 @@ export function SoloView() {
             />
           </div>
 
-          <WordCounter words={board.words} foundWords={foundWords} wordColors={wordColors} />
+          <div className="flex-1 overflow-y-auto pt-3">
+            <WordCounter words={board.words} foundWords={foundWords} wordColors={wordColors} />
+          </div>
         </div>
       )}
 
