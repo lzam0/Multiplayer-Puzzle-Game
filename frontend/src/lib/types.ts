@@ -177,3 +177,11 @@ export interface PlayerKickedPayload {
   playerId: string;
   name: string;
 }
+
+// Client → Server
+export interface ClientErrorPayload {
+  message: string;
+  stack?: string;
+  url: string;
+  timestamp: string;
+}

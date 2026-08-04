@@ -6,6 +6,7 @@ import {
   ConnectedSocket,
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
+import { Logger } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { LobbyService } from '../lobby/lobby.service';
 import { GameService } from '../game/game.service';
@@ -24,6 +25,8 @@ const HOST_SENTINEL = '__host__';
 export class GameGateway implements OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
+
+  private readonly logger = new Logger(GameGateway.name);
 
   // Server-side round timers keyed by room code (preview -> active, active -> end).
   private previewTimers = new Map<string, NodeJS.Timeout>();
@@ -341,6 +344,16 @@ export class GameGateway implements OnGatewayDisconnect {
     hits.push(now);
     this.traceHits.set(socketId, hits);
     return false;
+  }
+
+  @SubscribeMessage('client_error')
+  handleClientError(
+    @MessageBody() data: { message: string; stack?: string; url: string; timestamp: string },
+    @ConnectedSocket() client: Socket,
+  ): void {
+    this.logger.warn(
+      `[ClientError] socket=${client.id} url=${data.url} message=${data.message} stack=${data.stack ?? ''}`,
+    );
   }
 
   handleDisconnect(client: Socket) {
