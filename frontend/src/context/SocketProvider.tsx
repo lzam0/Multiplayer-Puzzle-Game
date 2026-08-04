@@ -9,6 +9,7 @@ import React, {
 } from 'react';
 import { Socket } from 'socket.io-client';
 import { getSocket } from '@/lib/socket';
+import { initErrorReporter } from '@/lib/errorReporter';
 
 interface SocketContextValue {
   socket: Socket;
@@ -33,6 +34,8 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     if (!s.connected) {
       s.connect();
     }
+
+    initErrorReporter(s);
 
     return () => {
       s.off('connect', onConnect);
