@@ -11,6 +11,7 @@ import type {
   RoomJoinedPayload,
   PlayerJoinedPayload,
   PlayerLeftPayload,
+  PlayerKickedPayload,
   RoundStartingPayload,
   RoundActivePayload,
   WordCorrectPayload,
@@ -53,6 +54,7 @@ interface UseRoomReturn {
   finishers: PlayerFinishedPayload[];
   roundRankings: RoundRankEntry[];
   podium: PodiumEntry[];
+  kicked: boolean;
   join: (name: string) => void;
   startGame: (topic: string) => void;
   nextRound: (topic: string) => void;
@@ -61,6 +63,7 @@ interface UseRoomReturn {
   traceWord: (word: string, letterIndices: number[]) => void;
   resetBoard: () => void;
   leave: () => void;
+  kickPlayer: (playerId: string) => void;
 }
 
 export function useRoom(code: string): UseRoomReturn {
@@ -81,6 +84,7 @@ export function useRoom(code: string): UseRoomReturn {
   const [finishers, setFinishers] = useState<PlayerFinishedPayload[]>([]);
   const [roundRankings, setRoundRankings] = useState<RoundRankEntry[]>([]);
   const [podium, setPodium] = useState<PodiumEntry[]>([]);
+  const [kicked, setKicked] = useState(false);
 
   const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const errorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -120,6 +124,13 @@ export function useRoom(code: string): UseRoomReturn {
         if (!prev) return prev;
         return { ...prev, players: prev.players.filter((p) => p.id !== payload.playerId) };
       });
+    };
+
+    const onPlayerKicked = (payload: PlayerKickedPayload) => {
+      setRoom((prev) =>
+        prev ? { ...prev, players: prev.players.filter((p) => p.id !== payload.playerId) } : prev,
+      );
+      if (payload.playerId === socket.id) setKicked(true);
     };
 
     // Host only: 5s board preview before players get the board
@@ -204,6 +215,7 @@ export function useRoom(code: string): UseRoomReturn {
     socket.on('room_joined', onRoomJoined);
     socket.on('player_joined', onPlayerJoined);
     socket.on('player_left', onPlayerLeft);
+    socket.on('player_kicked', onPlayerKicked);
     socket.on('round_starting', onRoundStarting);
     socket.on('round_active', onRoundActive);
     socket.on('word_correct', onWordCorrect);
@@ -217,6 +229,7 @@ export function useRoom(code: string): UseRoomReturn {
       socket.off('room_joined', onRoomJoined);
       socket.off('player_joined', onPlayerJoined);
       socket.off('player_left', onPlayerLeft);
+      socket.off('player_kicked', onPlayerKicked);
       socket.off('round_starting', onRoundStarting);
       socket.off('round_active', onRoundActive);
       socket.off('word_correct', onWordCorrect);
@@ -272,6 +285,11 @@ export function useRoom(code: string): UseRoomReturn {
     [socket, code],
   );
 
+  const kickPlayer = useCallback(
+    (playerId: string) => socket.emit('kick_player', { code, playerId }),
+    [socket, code],
+  );
+
   return {
     room,
     phase,
@@ -289,6 +307,7 @@ export function useRoom(code: string): UseRoomReturn {
     finishers,
     roundRankings,
     podium,
+    kicked,
     join,
     startGame,
     nextRound,
@@ -297,5 +316,6 @@ export function useRoom(code: string): UseRoomReturn {
     traceWord,
     resetBoard,
     leave,
+    kickPlayer,
   };
 }

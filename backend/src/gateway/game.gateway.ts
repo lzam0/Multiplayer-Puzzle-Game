@@ -242,6 +242,30 @@ export class GameGateway implements OnGatewayDisconnect {
     this.finishRound(data.code);
   }
 
+  @SubscribeMessage('kick_player')
+  handleKickPlayer(
+    @MessageBody() data: { code: string; playerId: string },
+    @ConnectedSocket() client: Socket,
+  ): void {
+    const room = this.lobbyService.getRoom(data.code);
+    if (!room || room.hostId !== client.id) {
+      client.emit('error', { message: 'Only the host can remove players' });
+      return;
+    }
+    if (room.status !== 'waiting' || room.currentRound !== null) {
+      client.emit('error', { message: 'Can only remove players in the lobby' });
+      return;
+    }
+    const target = room.players.find((p) => p.id === data.playerId);
+    if (!target || target.name === HOST_SENTINEL || target.id === room.hostId) return;
+
+    const name = target.name;
+    this.lobbyService.removePlayer(data.code, data.playerId);
+    this.server.to(data.code).emit('player_kicked', { playerId: data.playerId, name });
+    const targetSocket = this.server.sockets.sockets.get(data.playerId);
+    targetSocket?.disconnect(true);
+  }
+
   @SubscribeMessage('end_game')
   handleEndGame(
     @MessageBody() data: { code: string },

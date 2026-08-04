@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useRoom } from '@/hooks/useRoom';
 import { useSocket } from '@/hooks/useSocket';
@@ -38,11 +38,18 @@ export function PlayerView({ code }: PlayerViewProps) {
     roundIndex,
     isLastRound,
     podium,
+    kicked,
     join,
     traceWord,
     resetBoard,
     leave,
   } = useRoom(code);
+
+  useEffect(() => {
+    if (!kicked) return;
+    const t = setTimeout(() => router.push('/'), 2500);
+    return () => clearTimeout(t);
+  }, [kicked, router]);
 
   const wordColors = Object.fromEntries(foundWordPaths.map((p) => [p.word, p.color]));
   const foundWordIndices = foundWordPaths.flatMap((p) => p.indices);
@@ -64,6 +71,18 @@ export function PlayerView({ code }: PlayerViewProps) {
   }, [leave, router]);
 
   const visiblePlayers = room?.players.filter((p) => p.name !== HOST_SENTINEL) ?? [];
+
+  if (kicked) {
+    return (
+      <main className="h-dvh bg-white flex flex-col items-center justify-center p-8 max-w-md mx-auto">
+        <div className="text-center space-y-3">
+          <p className="text-4xl">🚫</p>
+          <h1 className="text-xl font-bold text-red-600">You were removed by the host</h1>
+          <p className="text-gray-500 text-sm">Redirecting you home…</p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="h-dvh overflow-hidden bg-white flex flex-col items-center p-4 gap-3 max-w-md mx-auto">

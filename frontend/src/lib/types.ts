@@ -165,3 +165,15 @@ export interface ResetBoardPayload {
 export interface BoardResetPayload {
   code: string;
 }
+
+// Client → Server
+export interface KickPlayerPayload {
+  code: string;
+  playerId: string;
+}
+
+// Server → Client
+export interface PlayerKickedPayload {
+  playerId: string;
+  name: string;
+}

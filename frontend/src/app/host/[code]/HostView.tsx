@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useRoom } from '@/hooks/useRoom';
 import { useSocket } from '@/hooks/useSocket';
-import { LobbyList } from '@/components/LobbyList';
 import { QrJoin } from '@/components/QrJoin';
 import { TopicSelector } from '@/components/TopicSelector';
 import { LetterBoard } from '@/components/LetterBoard';
@@ -43,12 +42,14 @@ export function HostView({ code }: HostViewProps) {
     nextRound,
     endRound,
     endGame,
+    kickPlayer,
   } = useRoom(code);
 
   const [selectedTopic, setSelectedTopic] = useState('Animals');
   const [joinUrl, setJoinUrl] = useState('');
   const [hasJoined, setHasJoined] = useState(false);
   const [showHowToPlay, setShowHowToPlay] = useState(false);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
 
   useEffect(() => {
     const origin =
@@ -109,7 +110,42 @@ export function HostView({ code }: HostViewProps) {
               <h2 className="text-xl font-bold mb-4 text-gray-200">
                 Players ({competitors.length})
               </h2>
-              <LobbyList players={competitors} />
+              {competitors.length === 0 ? (
+                <p className="text-gray-500 italic text-sm">No players yet…</p>
+              ) : (
+                <ul className="space-y-2">
+                  {competitors.map((p) => (
+                    <li key={p.id} className="group relative flex items-center justify-between bg-gray-700 rounded-xl px-4 py-3">
+                      <span className="text-white font-medium">{p.name}</span>
+                      {confirmingId === p.id ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-300">Remove {p.name}?</span>
+                          <button
+                            onClick={() => { kickPlayer(p.id); setConfirmingId(null); }}
+                            className="px-3 py-1 text-sm font-bold bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors"
+                          >
+                            Confirm
+                          </button>
+                          <button
+                            onClick={() => setConfirmingId(null)}
+                            className="px-3 py-1 text-sm font-bold bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmingId(p.id)}
+                          aria-label={`Remove ${p.name}`}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-400 text-xl leading-none font-bold px-2"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </section>
 
             <section className="bg-gray-800 rounded-2xl p-6 flex flex-col gap-4">
