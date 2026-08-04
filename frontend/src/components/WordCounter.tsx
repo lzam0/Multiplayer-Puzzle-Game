@@ -12,7 +12,7 @@ export function WordCounter({ words, foundWords, wordColors }: WordCounterProps)
   const sorted = [...words].sort((a, b) => a.length - b.length);
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-col gap-2">
       {sorted.map((word) => {
         const found = foundSet.has(word);
         const color = wordColors?.[word] ?? '#4ade80';
