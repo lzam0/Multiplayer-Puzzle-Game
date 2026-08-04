@@ -2,6 +2,16 @@
 
 A real-time multiplayer word puzzle game. A host runs a room on a shared screen; players solve on their phones. Each round a letter grid is generated from a topic's word list and players race independently to trace all the words. Fastest total time across 3 rounds wins.
 
+## Screenshots
+
+| Home | Host Lobby | Player Join |
+|---|---|---|
+| ![Home screen](screenshots/screenshot-home.png) | ![Host lobby with QR code](screenshots/screenshot-host-lobby.png) | ![Player join screen](screenshots/screenshot-player-join.png) |
+
+| How to Play — step 1 | How to Play — step 2 |
+|---|---|
+| ![How to play: scan QR](screenshots/screenshot-how-to-play.png) | ![How to play: word grid](screenshots/screenshot-how-to-play-2.png) |
+
 ## How to Play
 
 - The host creates a room and types any topic (e.g. "Space", "Pokemon", "Kitchen")
