@@ -24,6 +24,7 @@ export interface LetterGrid {
   words: string[];
   rows: number;
   cols: number;
+  paths: Record<string, number[]>;  // word → flat cell indices of its canonical path
 }
 
 export type GameStatus = 'waiting' | 'in_progress' | 'finished';

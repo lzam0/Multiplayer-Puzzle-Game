@@ -21,7 +21,7 @@ const WORD_COLORS = [
   '#f472b6',
 ];
 
-type SoloPhase = 'topic-entry' | 'loading' | 'playing' | 'round-result';
+type SoloPhase = 'topic-entry' | 'loading' | 'words-preview' | 'playing' | 'round-result';
 
 function formatMs(ms: number): string {
   const totalTenths = Math.floor(ms / 100);
@@ -40,6 +40,7 @@ export function SoloView() {
   const [phase, setPhase] = useState<SoloPhase>('topic-entry');
   const [topicInput, setTopicInput] = useState('');
   const [board, setBoard] = useState<LetterGrid | null>(null);
+  const [previewWords, setPreviewWords] = useState<string[]>([]);
   const [topic, setTopic] = useState('');
   const [foundWords, setFoundWords] = useState<string[]>([]);
   const [foundWordPaths, setFoundWordPaths] = useState<WordPath[]>([]);
@@ -57,21 +58,53 @@ export function SoloView() {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 12000);
     try {
-      const res = await fetch(
-        `${BACKEND_URL}/game/board?topic=${encodeURIComponent(topicInput)}`,
-        { signal: controller.signal },
-      );
-      if (!res.ok) throw new Error('Failed to generate board');
-      const { board: newBoard } = (await res.json()) as { board: LetterGrid };
-      setBoard(newBoard);
+      const res = await fetch(`${BACKEND_URL}/topics/words`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic: topicInput }),
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { detail?: string }).detail ?? 'Failed to generate words');
+      }
+      const { words } = (await res.json()) as { words: string[] };
+      setPreviewWords(words);
       setTopic(topicInput);
+      setPhase('words-preview');
+    } catch (e) {
+      setErrorMsg(e instanceof Error ? e.message : 'Could not generate words — try a different topic.');
+      setPhase('topic-entry');
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  };
+
+  const startPlaying = async () => {
+    setPhase('loading');
+    setErrorMsg(null);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    try {
+      const res = await fetch(`${BACKEND_URL}/board/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ words: previewWords }),
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { detail?: string }).detail ?? 'Failed to generate board');
+      }
+      const grid = (await res.json()) as LetterGrid;
+      setBoard(grid);
       setFoundWords([]);
       setFoundWordPaths([]);
       stopwatchReset();
       stopwatchStart();
       setPhase('playing');
-    } catch {
-      setErrorMsg('Could not generate board — try a different topic.');
+    } catch (e) {
+      setErrorMsg(e instanceof Error ? e.message : 'Could not generate board — try a different topic.');
       setPhase('topic-entry');
     } finally {
       clearTimeout(timeoutId);
@@ -82,6 +115,10 @@ export function SoloView() {
     if (!board) return;
     if (foundWords.includes(word)) return;
     if (!board.words.includes(word)) return;
+    const canonical = board.paths[word];
+    if (!canonical) return;
+    const canonicalSet = new Set(canonical);
+    if (letterIndices.length !== canonical.length || !letterIndices.every(idx => canonicalSet.has(idx))) return;
     const colorIndex = board.words.indexOf(word);
     const color = WORD_COLORS[colorIndex % WORD_COLORS.length];
     setFoundWordPaths((prev) => [...prev, { word, indices: letterIndices, color }]);
@@ -159,6 +196,39 @@ export function SoloView() {
           >
             Back to Home
           </button>
+        </div>
+      )}
+
+      {phase === 'words-preview' && (
+        <div className="flex flex-col items-center gap-6 w-full flex-1 justify-center">
+          <div className="text-center">
+            <p className="text-xs text-gray-500 uppercase tracking-wide">Topic</p>
+            <p className="font-bold text-2xl">{topic}</p>
+          </div>
+          <div className="w-full flex flex-col gap-2">
+            {previewWords.map((word) => (
+              <div
+                key={word}
+                className="w-full px-5 py-3 bg-blue-50 border border-blue-200 rounded-xl font-mono font-bold text-blue-700 text-lg tracking-widest text-center"
+              >
+                {word}
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-col gap-3 w-full">
+            <button
+              onClick={startPlaying}
+              className="w-full py-4 text-xl font-bold text-white bg-blue-600 rounded-2xl hover:bg-blue-700 transition-colors"
+            >
+              Play
+            </button>
+            <button
+              onClick={() => setPhase('topic-entry')}
+              className="text-gray-400 text-sm underline"
+            >
+              Try a different topic
+            </button>
+          </div>
         </div>
       )}
 
