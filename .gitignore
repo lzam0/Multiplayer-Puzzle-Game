@@ -42,13 +42,10 @@ Thumbs.db
 coverage/
 .nyc_output/
 
-# NestJS
-dist/
-*.js.map
-
-# TS build info
-*.tsbuildinfo
-
+# Python
+__pycache__/
+*.py[cod]
+.venv/
 
 # claude: ignore all files in the root directory except for the .gitignore file
 .claude/
