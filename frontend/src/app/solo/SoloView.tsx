@@ -7,8 +7,7 @@ import { WordTracer } from '@/components/WordTracer';
 import { WordCounter } from '@/components/WordCounter';
 import { useStopwatch } from '@/hooks/useStopwatch';
 import { BackButton } from '@/components/BackButton';
-
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:8888';
+import { BACKEND_URL } from '@/lib/config';
 
 const WORD_COLORS = [
   '#f87171',
