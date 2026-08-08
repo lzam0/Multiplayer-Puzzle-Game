@@ -20,7 +20,7 @@ const SocketContext = createContext<SocketContextValue | null>(null);
 
 export function SocketProvider({ children }: { children: React.ReactNode }) {
   const socketRef = useRef<Socket>(getSocket());
-  const [connected, setConnected] = useState(socketRef.current.connected);
+  const [connected, setConnected] = useState(true);
 
   useEffect(() => {
     const s = socketRef.current;
