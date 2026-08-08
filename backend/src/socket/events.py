@@ -374,6 +374,16 @@ def register_events(sio):
             if all_finished:
                 await _end_round(sio, code)
 
+    @sio.on("end_round")
+    async def on_end_round(sid, data):
+        code = data.get("code", "").upper()
+        room = rooms.get(code)
+        if not room or room.host_id != sid:
+            return
+        if not room.rounds or room.rounds[-1].phase != "active":
+            return
+        await _end_round(sio, code)
+
     @sio.on("reset_board")
     async def on_reset_board(sid, data):
         code = data.get("code", "").upper()
