@@ -21,7 +21,13 @@ load_dotenv(".env.dev")
 # per-IP rate limiter (injected into routes via state)
 limiter = Limiter(key_func=get_remote_address)
 
-sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*")
+_raw_origins = os.getenv("CORS_ORIGINS", "*")
+_cors_origins = (
+    [o.strip() for o in _raw_origins.split(",")]
+    if _raw_origins != "*"
+    else "*"
+)
+sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins=_cors_origins)
 
 app = FastAPI()
 app.state.limiter = limiter

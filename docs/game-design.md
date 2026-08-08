@@ -3,18 +3,19 @@
 ## Game Loop
 
 ```
-1. Host opens the app → creates a room → gets a 4-digit code + QR code
+1. Host opens the app → creates a room → gets a 4-letter code + QR code
 2. Players scan QR / enter code on mobile → enter their name → land in lobby
-3. Host types any topic (e.g. "Ocean", "90s Movies") — Groq generates a word list
-4. Host presses "Start Game"
-5. Server generates a sparse letter grid from the word list
-6. Host gets a 5-second preview of the board (players see nothing)
-7. Board goes live on players' phones — each player's server-side timer starts
-8. Players independently trace words by connecting adjacent letters on their screen
-9. Server validates each submission; correct words highlight on that player's board only
-10. Player finishes when all words are found (auto-submit) or the 90s round ends
-11. Round rankings shown; host starts next round (up to 3 rounds)
-12. Final podium: lowest total time across all rounds wins
+3. Host can kick players from the lobby before the game starts
+4. Host types any topic (e.g. "Ocean", "90s Movies") — Groq generates a word list
+5. Host presses "Start Game"
+6. Server generates a sparse letter grid from the word list
+7. Host gets a 5-second preview of the board (players see nothing)
+8. Board goes live on players' phones — each player's server-side timer starts
+9. Players independently trace words by connecting adjacent letters on their screen
+10. Server validates each submission; correct words highlight on that player's board only
+11. Player finishes when all words are found (auto-submit) or the 90s round ends
+12. Round rankings shown; host starts next round (up to 3 rounds)
+13. Final podium: lowest total time across all rounds wins
 ```
 
 ## Multiplayer Rules
@@ -22,6 +23,8 @@
 - Each player has their own independent board — finding a word does not remove it for others
 - `word_correct` is sent only to the submitter — boards are private
 - The host joins as a silent sentinel (`__host__`) and sees a reference board but does not compete
+- Host can remove players from the lobby using the kick control (confirm dialog required)
+- Kicked players are redirected home automatically
 - 3 rounds per game; host picks the topic for each round
 - A 5-second host-only preview precedes each round — players cannot pre-solve
 
@@ -38,68 +41,91 @@ Round rankings: finishers listed by time ascending, then non-finishers by words-
 
 ## Board Generation
 
-The server receives the Groq-generated word list and lays out letters on a **sparse** grid:
+The server receives a Groq-generated word list and lays out letters on a **sparse** grid:
 
 - All words are placed as orthogonally-adjacent (horizontal or vertical) paths
 - No two words share a cell
 - Non-word cells are left empty (`''`) and rendered as inert grey tiles on the board
 - Grid is sized with ~1.5× padding over total word letters, giving an irregular silhouette
-- The packer uses a **two-pass strategy**: strict pass first (ensures each word has exactly one valid traceable path); if that times out on high-overlap word lists, a relaxed pass runs without the uniqueness constraint — all words are still placed in non-overlapping cells
+- The packer uses a **two-pass strategy**: strict pass first (ensures each word has exactly one valid traceable path); if that times out, a relaxed pass runs without the uniqueness constraint — all words are still placed in non-overlapping cells
 - Words are placed longest-first to minimise backtracking
+- Each word's canonical path (flat cell indices) is included in the board response
 
 ## Word Validation
 
-When a player submits a trace:
-1. Server checks the traced letter indices form a valid orthogonal, non-repeating path
-2. Server reconstructs the word from the indices — the client-supplied word string is never trusted alone
+**Multiplayer (server-side):**
+1. Server reconstructs the word from the submitted `letterIndices` — the client-supplied word string is never trusted alone
+2. Server checks the indices form a valid orthogonal, non-repeating path
 3. Server checks the word is in the board's word list
 4. Server checks the word has not already been found by this player
-5. If all pass → `word_correct` to submitter only; otherwise → `word_incorrect` to submitter only
+5. If all pass → `word_correct` to submitter only; otherwise → `word_incorrect`
+
+**Solo (client-side):**
+The board response includes `paths` — the canonical flat indices for each word. The frontend validates that the traced indices match the canonical path exactly, then records the word locally.
 
 ## Topics
 
-Topics are generated dynamically by Groq (`llama-3.3-70b-versatile`) on demand. The host types any free-text topic; the backend prompts Groq for 6 uppercase, 3–8 letter English words strongly associated with that topic. The prompt requires at least 2 words to be 3 or 4 letters long to ensure a mix of word lengths.
+Topics are generated dynamically by Groq (`llama-3.3-70b-versatile`) on demand. The host types any free-text topic; the backend prompts Groq for 10 uppercase, 3–8 letter English words. The validation pipeline:
+- Filters to `/^[A-Z]{3,8}$/`
+- Deduplicates
+- Drops any word that is a strict prefix of another word in the list (e.g. `POKE` dropped when `POKEMON` is present — prefix pairs make board generation impossible)
+- Requires at least 6 valid words after filtering, or returns an error
+- Returns up to 6 words (shuffled)
 
-Validation pipeline:
-- Filter to `/^[A-Z]{3,8}$/`
-- Deduplicate
-- Require at least 4 valid words or return an error to the host
-- Shuffle, return up to 6
+The prompt instructs the model to include at least 3 words of 3–4 letters to ensure a mix of word lengths on every board.
 
-See `docs/topics.md` for details on the word format.
+See `docs/topics.md` for full details.
+
+## Solo Mode
+
+Solo mode lets a single player generate and solve boards without a room or host.
+
+Flow:
+1. **Topic entry** — player types any topic
+2. **Word loading** — `POST /topics/words` generates 6 words via Groq
+3. **Words preview** — words are displayed before the board is shown; player can go back and try a different topic
+4. **Board loading** — `POST /board/generate` generates the board from the confirmed word list
+5. **Playing** — client-side stopwatch runs; word validation is client-side using canonical `paths`
+6. **Round result** — time, session best, and cumulative total are shown; player can start another round
 
 ## Lobby UX
 
 - Host screen is designed for a big shared display (TV, laptop propped up, projector)
-- QR code is displayed prominently so players can scan instantly
-- Room code is shown in large type as a fallback
+- QR code is displayed prominently so players can scan instantly (generated client-side)
+- Room code shown in large type as a fallback
 - Player names appear in the lobby list as they join
+- Host can remove players via a per-player kick button (requires confirmation click)
 - Host controls topic input and game start
 
-## Backend Status
+## Backend Implementation Status
 
-- **43/43 tests passing** across 5 test suites
-- Phases 1–6 complete and committed
+### What is implemented (Python backend)
 
-### What's implemented
-- `TopicsService.generateWords` — Groq-powered dynamic word generation for any topic
-- `GameService.generateGrid` — sparse backtracking packer with two-pass strategy (strict uniqueness gate, then relaxed fallback)
-- `GameService.validateTrace` — adjacency + membership + per-player dedup
-- Full Kahoot-style round flow: `start_game` → 5s preview → `round_active` → `round_over` → `game_over`
-- Server-authoritative 90s round timer; host can end early
-- Per-player independent solve; completion time computed server-side
-- `LobbyService.claimHost` — host sentinel pattern
-- Rate-limited `trace_word` handler
-- `GET /game/board?topic=` REST endpoint for solo mode board generation
+**REST:**
+- `POST /lobby` — create room
+- `GET /lobby/{code}` — room lookup
+- `POST /topics/words` — Groq word generation
+- `POST /board/generate` — board generation from a word list
+- `GET /` — health check
 
-See `docs/websocket-events.md` for the full socket contract.
+**Socket.io:**
+- `join_room` — player and host join; host sentinel pattern
+- `leave_room` — explicit leave
+- `kick_player` — host removes a player
+- `start_game` — begins round 1 (triggers Groq call + board generation + 5s preview)
+- `next_round` — begins subsequent rounds
+- Server → client: `room_joined`, `player_joined`, `player_left`, `player_kicked`, `round_starting`, `round_active`, `error`
 
-### Frontend features
-- SVG stroke overlay — found words rendered as colored paths over the board (Phase 5)
-- `WordCounter` — compact horizontal-wrap layout; letter-slot boxes sorted shortest-to-longest; fills with stroke color on find
-- Solo mode (`/solo`) — single-player, client-side stopwatch, session best tracking, Groq-powered boards
+### What is not yet implemented in the Python rewrite
 
-## What's Not Yet Implemented
+- `trace_word` handler (and resulting `word_correct`, `word_incorrect`, `player_finished`)
+- `end_round` (host early-end)
+- `end_game` (trigger final podium → `round_over`, `game_over`)
+- `reset_board` / `board_reset`
+- Round timer expiry logic (stub exists in `_round_timer` coroutine)
 
-- **`leave_room` handler** — frontend emits it on disconnect but the backend has no listener; disconnect handling does clean up players automatically
+The frontend (`useRoom.ts`) already wires up all of the above events and is ready once the backend handlers are added.
+
+## What's Not Implemented (Game Features)
+
 - **Diagonal word placement** — orthogonal only

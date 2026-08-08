@@ -7,29 +7,30 @@ graph TD
     PLAYER2["📱 Player Device\nlocalhost:3333/play/[code]"]
     SOLO["📱 Solo Player\nlocalhost:3333/solo"]
 
-    subgraph BACKEND["NestJS Backend — localhost:8888"]
-        REST["REST API\nPOST /lobby\nGET /lobby/:code\nGET /qr/:code\nGET /game/board?topic="]
-        WS["WebSocket Gateway\nSocket.io"]
-        LOBBY["LobbyService\nroom lifecycle\nplayer management\nround state"]
-        GAME["GameService\ntwo-pass board generation\nword validation\nround ranking"]
-        TOPICS["TopicsService\ngenerateWords(topic)\nGroq API + validation pipeline"]
-        STATE["In-memory state\nMap&lt;code, Room&gt;"]
+    subgraph BACKEND["FastAPI Backend (Python) — localhost:8888"]
+        REST["REST API\nPOST /lobby\nGET /lobby/{code}\nPOST /topics/words\nPOST /board/generate\nGET /"]
+        WS["Socket.io\n(python-socketio)"]
+        ROUTES["routes/\nlobby · topics · board · health"]
+        CONTROLLERS["controllers/\ntopics.py · board.py · health.py"]
+        SOCKET["socket/\nevents.py — event handlers\ngame_state.py — in-memory state"]
+        MW["middleware/\ndaily_cap.py — 10k/day global cap"]
+        STATE["In-memory state\ndict[code, Room]"]
     end
 
     GROQ["☁️ Groq API\nllama-3.3-70b-versatile"]
 
-    HOST -->|"HTTP — create room / fetch QR"| REST
+    HOST -->|"HTTP — POST /lobby"| REST
     HOST <-->|"WebSocket"| WS
     PLAYER1 <-->|"WebSocket"| WS
     PLAYER2 <-->|"WebSocket"| WS
-    SOLO -->|"HTTP — GET /game/board?topic="| REST
+    SOLO -->|"HTTP — POST /topics/words\nPOST /board/generate"| REST
 
-    WS --> LOBBY
-    WS --> GAME
-    WS --> TOPICS
-    REST --> TOPICS
-    REST --> GAME
-    LOBBY --> STATE
-    GAME --> STATE
-    TOPICS --> GROQ
+    REST --> ROUTES
+    ROUTES --> CONTROLLERS
+    WS --> SOCKET
+    SOCKET --> STATE
+    CONTROLLERS --> STATE
+    CONTROLLERS --> GROQ
+    SOCKET --> CONTROLLERS
+    REST --> MW
 ```
