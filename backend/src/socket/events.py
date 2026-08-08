@@ -51,10 +51,82 @@ def _grid_to_dict(board) -> dict:
     }
 
 
+def _validate_trace(board, word: str, letter_indices: list[int]) -> bool:
+    if not letter_indices:
+        return False
+    if len(set(letter_indices)) != len(letter_indices):
+        return False
+    traced = ""
+    for idx in letter_indices:
+        r, c = divmod(idx, board.cols)
+        if r < 0 or r >= board.rows or c < 0 or c >= board.cols:
+            return False
+        traced += board.letters[r][c]
+    if traced != word:
+        return False
+    for i in range(len(letter_indices) - 1):
+        r1, c1 = divmod(letter_indices[i], board.cols)
+        r2, c2 = divmod(letter_indices[i + 1], board.cols)
+        if abs(r1 - r2) + abs(c1 - c2) != 1:
+            return False
+    return True
+
+
+def _compute_rankings(room) -> list[dict]:
+    round_state = room.rounds[-1]
+    go_live_at = round_state.go_live_at or 0
+    rankings = []
+    for sid, player in room.players.items():
+        prs = round_state.player_states.get(sid)
+        completed_at = prs.completed_at if prs else None
+        completion_time_ms = (completed_at - go_live_at) if completed_at is not None else None
+        words_found = len(prs.found_words) if prs else 0
+        charged_ms = completion_time_ms if completion_time_ms is not None else (ROUND_DURATION_MS + 30_000)
+        rankings.append({
+            "playerId": sid,
+            "name": player.name,
+            "completionTimeMs": completion_time_ms,
+            "wordsFound": words_found,
+            "chargedMs": charged_ms,
+        })
+    finishers = sorted([r for r in rankings if r["completionTimeMs"] is not None], key=lambda r: r["completionTimeMs"])
+    non_finishers = sorted([r for r in rankings if r["completionTimeMs"] is None], key=lambda r: -r["wordsFound"])
+    ranked = finishers + non_finishers
+    for i, r in enumerate(ranked):
+        r["rank"] = i + 1
+    return ranked
+
+
+async def _end_round(sio, code: str):
+    room = rooms.get(code)
+    if not room or not room.rounds:
+        return
+    round_state = room.rounds[-1]
+    if round_state.phase == "ended":
+        return
+    round_state.phase = "ended"
+    if round_state.timer_task:
+        round_state.timer_task.cancel()
+        round_state.timer_task = None
+
+    rankings = _compute_rankings(room)
+    is_last_round = round_state.index >= TOTAL_ROUNDS - 1
+
+    await sio.emit("round_over", {
+        "rankings": rankings,
+        "roundIndex": round_state.index,
+        "isLastRound": is_last_round,
+    }, room=code)
+
+
 async def _round_timer(sio, code: str, round_index: int):
     await asyncio.sleep(ROUND_DURATION_MS / 1000)
-    # Phase 4 will handle expiry — stub for now
-    print(f"[timer] round {round_index} expired for room {code}")
+    room = rooms.get(code)
+    if not room or not room.rounds:
+        return
+    if room.rounds[-1].index != round_index or room.rounds[-1].phase == "ended":
+        return
+    await _end_round(sio, code)
 
 
 async def _start_round(sio, code: str, topic: str, round_index: int):
@@ -240,3 +312,69 @@ def register_events(sio):
             return
 
         asyncio.create_task(_start_round(sio, code, topic, next_index))
+
+    @sio.on("trace_word")
+    async def on_trace_word(sid, data):
+        code = data.get("code", "").upper()
+        word = data.get("word", "").upper().strip()
+        letter_indices = data.get("letterIndices", [])
+
+        room = rooms.get(code)
+        if not room or not room.rounds:
+            return
+
+        round_state = room.rounds[-1]
+        if round_state.phase != "active":
+            return
+
+        player = room.players.get(sid)
+        if not player:
+            return
+
+        prs = round_state.player_states.get(sid)
+        if not prs:
+            return
+
+        if word in prs.found_words:
+            await sio.emit("word_incorrect", {"word": word, "playerId": sid}, to=sid)
+            return
+
+        if word not in round_state.board.words or not _validate_trace(round_state.board, word, letter_indices):
+            await sio.emit("word_incorrect", {"word": word, "playerId": sid}, to=sid)
+            return
+
+        prs.found_words.add(word)
+        remaining = len(round_state.board.words) - len(prs.found_words)
+
+        await sio.emit("word_correct", {
+            "word": word,
+            "foundBy": sid,
+            "score": len(prs.found_words),
+            "remaining": remaining,
+        }, to=sid)
+
+        if remaining == 0:
+            now_ms = time_mod.time() * 1000
+            prs.completed_at = now_ms
+            completion_time_ms = now_ms - (round_state.go_live_at or now_ms)
+
+            finished_payload = {
+                "playerId": sid,
+                "name": player.name,
+                "completionTimeMs": completion_time_ms,
+            }
+            await sio.emit("player_finished", finished_payload, to=room.host_id)
+            await sio.emit("player_finished", finished_payload, to=sid)
+
+            all_finished = all(
+                round_state.player_states.get(psid) and
+                round_state.player_states[psid].completed_at is not None
+                for psid in room.players
+            )
+            if all_finished:
+                await _end_round(sio, code)
+
+    @sio.on("reset_board")
+    async def on_reset_board(sid, data):
+        code = data.get("code", "").upper()
+        await sio.emit("board_reset", {"code": code}, to=sid)
