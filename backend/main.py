@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from src.routes.health import router as health_router
 from src.routes.topics import router as topics_router
 from src.routes.board import router as board_router
+from src.routes.lobby import router as lobby_router
 from src.socket.events import register_events
 from src.middleware.daily_cap import DailyCapMiddleware
 
@@ -40,6 +41,7 @@ app.add_middleware(DailyCapMiddleware, daily_limit=10_000)
 app.include_router(health_router)
 app.include_router(topics_router, prefix="/topics")
 app.include_router(board_router, prefix="/board")
+app.include_router(lobby_router, prefix="/lobby")
 
 # register socket.io events
 register_events(sio)
